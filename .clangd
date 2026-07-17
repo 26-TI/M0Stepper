@@ -1,0 +1,18 @@
+CompileFlags:
+  CompilationDatabase: build/
+  Remove:
+    - -mcpu=*
+    - -march=*
+    - -mthumb
+    - -mfloat-abi=*
+    - -gstrict-dwarf
+    - -fmessage-length=*
+
+Diagnostics:
+  Suppress:
+    - unused-parameter
+    - missing-prototypes
+  UnusedIncludes: Strict
+  ClangTidy:
+    Remove:
+      - modernize-use-trailing-return-type
