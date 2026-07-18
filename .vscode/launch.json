@@ -7,12 +7,12 @@
       "request": "launch",
       "name": "cmsis-dap-debug",
       "servertype": "openocd",
+      "openocdPath": "D:\\Toolchain\\OpenOCD-20260302\\bin\\openocd.exe",
       // 这个是根据主文件名 作为名字 ${workspaceFolderBasename}
       "executable": "build/${workspaceFolderBasename}.elf",
       "runToEntryPoint": "main",
       "configFiles": [
-        "interface/cmsis-dap.cfg",
-        "target/mspm0.cfg"
+        "${workspaceRoot}\\Flash\\daplink.cfg"
       ],
       "liveWatch": {
         "enabled": true,

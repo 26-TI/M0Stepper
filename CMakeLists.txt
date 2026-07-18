@@ -3,9 +3,9 @@ include(mspm0g350x_base.cmake)
 
 project(m0test C CXX ASM)
 
-# file(GLOB FREERTOS_C_SOURCES "./FreeRTOS/*.c")
-# file(GLOB FREERTOS_MEMMANG_C_SOURCES "./FreeRTOS/portable/MemMang/heap_4.c")
-# file(GLOB_RECURSE FREERTOS_PORTABLE_C_SOURCES "./FreeRTOS/portable/GCC/ARM_CM0/*.c")
+file(GLOB FREERTOS_C_SOURCES "./FreeRTOS/*.c")
+file(GLOB FREERTOS_MEMMANG_C_SOURCES "./FreeRTOS/portable/MemMang/heap_4.c")
+file(GLOB_RECURSE FREERTOS_PORTABLE_C_SOURCES "./FreeRTOS/portable/GCC/ARM_CM0/*.c")
 
 file(GLOB_RECURSE USER_SOURCES
     RELATIVE ${CMAKE_CURRENT_SOURCE_DIR}
@@ -18,16 +18,16 @@ add_executable(${CMAKE_PROJECT_NAME}.elf
     ${SYSCONFIG_SOURCES}
     ${MSPM0_SDK_SOURCES}
     ${MSPM0_STARTUP}
-    # ${FREERTOS_C_SOURCES}
-    # ${FREERTOS_PORTABLE_C_SOURCES}
-    # ${FREERTOS_MEMMANG_C_SOURCES}
+    ${FREERTOS_C_SOURCES}
+    ${FREERTOS_PORTABLE_C_SOURCES}
+    ${FREERTOS_MEMMANG_C_SOURCES}
     ${USER_SOURCES}
 
 )
 
 include_directories(
-    # ./FreeRTOS/include
-    # ./FreeRTOS/portable/GCC/ARM_CM0/
+    ./FreeRTOS/include
+    ./FreeRTOS/portable/GCC/ARM_CM0/
     ./User/Main
     ./User/App
     ./User/Bsp

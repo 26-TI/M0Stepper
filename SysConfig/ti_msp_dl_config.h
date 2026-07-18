@@ -221,6 +221,18 @@ bool SYSCFG_DL_SYSCTL_SYSPLL_init(void);
 /* Defines for Dir: GPIOA.27 with pinCMx 60 on package pin 47 */
 #define STP_pins_Dir_PIN                                        (DL_GPIO_PIN_27)
 #define STP_pins_Dir_IOMUX                                       (IOMUX_PINCM60)
+/* Port definition for Pin Group Keys */
+#define Keys_PORT                                                        (GPIOA)
+
+/* Defines for Key1_up: GPIOA.28 with pinCMx 3 on package pin 3 */
+#define Keys_Key1_up_PIN                                        (DL_GPIO_PIN_28)
+#define Keys_Key1_up_IOMUX                                        (IOMUX_PINCM3)
+/* Defines for Key2_dn: GPIOA.25 with pinCMx 55 on package pin 45 */
+#define Keys_Key2_dn_PIN                                        (DL_GPIO_PIN_25)
+#define Keys_Key2_dn_IOMUX                                       (IOMUX_PINCM55)
+/* Defines for Key3_ok: GPIOA.17 with pinCMx 39 on package pin 32 */
+#define Keys_Key3_ok_PIN                                        (DL_GPIO_PIN_17)
+#define Keys_Key3_ok_IOMUX                                       (IOMUX_PINCM39)
 
 
 /* Defines for MCAN0 */

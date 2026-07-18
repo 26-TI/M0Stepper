@@ -42,3 +42,8 @@ void bsp_delay_us(uint32_t us)
     for (volatile uint32_t i = 0; i < us * 60; i++)
         __asm("nop");
 }
+
+/* ---- 按键（SysConfig 上拉 → 按下=低电平） ---- */
+int bsp_btn_up(void) { return DL_GPIO_readPins(Keys_PORT, Keys_Key1_up_PIN) == 0; }
+int bsp_btn_dn(void) { return DL_GPIO_readPins(Keys_PORT, Keys_Key2_dn_PIN) == 0; }
+int bsp_btn_ok(void) { return DL_GPIO_readPins(Keys_PORT, Keys_Key3_ok_PIN) == 0; }

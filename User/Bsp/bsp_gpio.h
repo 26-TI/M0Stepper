@@ -24,6 +24,11 @@ void bsp_dir_low(void);
 void bsp_led_toggle(void);
 void bsp_delay_us(uint32_t us);
 
+/* 菜单按键（0=按下/1=松开，SysConfig 上拉） */
+int  bsp_btn_up(void);
+int  bsp_btn_dn(void);
+int  bsp_btn_ok(void);
+
 #ifdef __cplusplus
 }
 #endif

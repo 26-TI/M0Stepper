@@ -18,6 +18,8 @@
 /******************************************************************************/
 
 /* CPU 时钟频率 (Hz)，需根据实际硬件设置，通常等于主系统时钟 */
+/* MSPM0G3507 是 Cortex-M0+，2 位中断优先级 (0x00/0x40/0x80/0xC0) */
+#define configPRIO_BITS                            2
 #define configCPU_CLOCK_HZ    ( ( unsigned long ) 80000000 )
 
 /* SysTick 时钟频率 (仅 ARM Cortex-M)，若 SysTick 与 CPU 同频则无需定义 */
@@ -145,14 +147,12 @@
 /* 中断嵌套配置 */
 /******************************************************************************/
 
-/* 内核中断优先级 (SysTick / PendSV)，仅部分移植支持 */
-#define configKERNEL_INTERRUPT_PRIORITY          0
+/* SysTick / PendSV 中断优先级：0xC0 = 最低优先级 (M0+ 2-bit, 3<<6) */
+#define configKERNEL_INTERRUPT_PRIORITY          ( 0xC0 )
 
-/* 可安全调用 FreeRTOS API 的最高中断优先级 (高于此优先级的中断不会被内核屏蔽) */
-#define configMAX_SYSCALL_INTERRUPT_PRIORITY     0
-
-/* 同上，另一命名 (视移植而定) */
-#define configMAX_API_CALL_INTERRUPT_PRIORITY    0
+/* 允许调用 FreeRTOS API 的中断优先级阈值：0x00 = 禁止 ISR 调用 API（最安全） */
+#define configMAX_SYSCALL_INTERRUPT_PRIORITY     ( 0x00 )
+#define configMAX_API_CALL_INTERRUPT_PRIORITY    ( 0x00 )
 
 /******************************************************************************/
 /* 钩子与回调函数配置 */
@@ -285,11 +285,9 @@
 /* ARMv8-M 移植配置 */
 /******************************************************************************/
 
-/* 1=启用 TrustZone (非安全侧运行 FreeRTOS 时) */
-#define configENABLE_TRUSTZONE            1
-
-/* 1=仅安全侧运行 (不使用 TrustZone，安全侧运行整个应用) */
-#define configRUN_FREERTOS_SECURE_ONLY    1
+/* 1=启用 TrustZone — MSPM0G3507 (Cortex-M0+) 无 TrustZone，必须关 */
+#define configENABLE_TRUSTZONE            0
+#define configRUN_FREERTOS_SECURE_ONLY    0
 
 /* 1=启用 MPU (内存保护单元) */
 #define configENABLE_MPU                  0
