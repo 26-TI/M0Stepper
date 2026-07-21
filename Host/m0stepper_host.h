@@ -115,14 +115,14 @@ static inline void m0st_set_speed(uint8_t motor_id, float rpm)
 
 /* ---- 位置控制 ---- */
 
-/** 多圈位置控制（闭环 P）
+/** 绝对位置控制（闭环 P）
  *  @param motor_id  电机号
  *  @param angle_deg 目标角度 0°~360°
  *  @param turns     目标圈数（可正可负）
  *  @param max_rpm   最大转速 RPM（0=默认45）
  */
-static inline void m0st_move_to_multi(uint8_t motor_id,
-                                      float angle_deg, int16_t turns, float max_rpm)
+static inline void m0st_move_abs(uint8_t motor_id,
+                                 float angle_deg, int16_t turns, float max_rpm)
 {
     uint8_t d[8];
     m0st_build(d, M0ST_CMD_POSITION,
@@ -130,7 +130,7 @@ static inline void m0st_move_to_multi(uint8_t motor_id,
     g_m0st_send(0x100 + motor_id, d, 8);
 }
 
-/** 单圈位置控制（闭环 P）
+/** 单圈就近位置控制（闭环 P, 最多走 180°）
  *  @param motor_id  电机号
  *  @param angle_deg 目标角度 0°~360°
  *  @param max_rpm   最大转速 RPM（0=默认45）
@@ -138,7 +138,7 @@ static inline void m0st_move_to_multi(uint8_t motor_id,
 static inline void m0st_move_to(uint8_t motor_id,
                                 float angle_deg, float max_rpm)
 {
-    m0st_move_to_multi(motor_id, angle_deg, 0, max_rpm);
+    m0st_move_abs(motor_id, angle_deg, 0, max_rpm);  /* turns=0 → 固件走就近路径 */
 }
 
 /* ---- 停止 ---- */

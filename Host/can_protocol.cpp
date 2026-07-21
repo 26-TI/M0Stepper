@@ -56,9 +56,10 @@ void can_motor_tick(void)
  *  电机控制命令
  * ================================================================ */
 
-void can_motor_set_speed(uint8_t id, float rpm)     { m0st_set_speed(id, rpm); }
-void can_motor_move_to(uint8_t id, float ang, float r){ m0st_move_to(id, ang, r); }
-void can_motor_stop(uint8_t id)                     { m0st_stop(id); }
+void can_motor_set_speed(uint8_t id, float rpm)         { m0st_set_speed(id, rpm); }
+void can_motor_move_to(uint8_t id, float ang, float r)  { m0st_move_to(id, ang, r); }
+void can_motor_move_abs(uint8_t id, float ang, int t, float r) { m0st_move_abs(id, ang, t, r); }
+void can_motor_stop(uint8_t id)                         { m0st_stop(id); }
 void can_motor_enable(uint8_t id, bool on)          { m0st_enable(id, on); }
 void can_motor_query(uint8_t id, uint8_t sub)       { m0st_query(id, sub); }
 
