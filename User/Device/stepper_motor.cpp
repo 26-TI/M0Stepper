@@ -9,6 +9,7 @@
 #include "stepper_motor.h"
 #include "bsp_pwm.h"
 #include "bsp_gpio.h"
+#include "ti_msp_dl_config.h"
 
 #define STEPS_PER_REV   6400
 
@@ -16,6 +17,9 @@ void stepper_init(void)
 {
     bsp_dir_high();
     bsp_step_pwm_init();
+    /* EN=PA25 拉低使能驱动器 */
+    DL_GPIO_setPins(EN_PORT, EN_En_pin_PIN);
+    DL_GPIO_enableOutput(EN_PORT, EN_En_pin_PIN);
 }
 
 void stepper_set_speed(float rpm)
@@ -37,4 +41,12 @@ void stepper_set_speed(float rpm)
     /* RPM → 脉冲频率(Hz) */
     uint32_t freq = (uint32_t)(rpm * (float)STEPS_PER_REV / 60.0f);
     bsp_step_pwm_set_freq(freq);
+}
+
+void stepper_enable(bool on)
+{
+    if (on)
+        DL_GPIO_clearPins(EN_PORT, EN_En_pin_PIN);
+    else
+        DL_GPIO_setPins(EN_PORT, EN_En_pin_PIN);
 }

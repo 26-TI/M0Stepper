@@ -111,22 +111,6 @@ bool SYSCFG_DL_SYSCTL_SYSPLL_init(void);
 
 
 
-
-/* Defines for I2C_0 */
-#define I2C_0_INST                                                          I2C0
-#define I2C_0_INST_IRQHandler                                    I2C0_IRQHandler
-#define I2C_0_INST_INT_IRQN                                        I2C0_INT_IRQn
-#define I2C_0_BUS_SPEED_HZ                                                500000
-#define GPIO_I2C_0_SDA_PORT                                                GPIOA
-#define GPIO_I2C_0_SDA_PIN                                         DL_GPIO_PIN_0
-#define GPIO_I2C_0_IOMUX_SDA                                      (IOMUX_PINCM1)
-#define GPIO_I2C_0_IOMUX_SDA_FUNC                       IOMUX_PINCM1_PF_I2C0_SDA
-#define GPIO_I2C_0_SCL_PORT                                                GPIOA
-#define GPIO_I2C_0_SCL_PIN                                         DL_GPIO_PIN_1
-#define GPIO_I2C_0_IOMUX_SCL                                      (IOMUX_PINCM2)
-#define GPIO_I2C_0_IOMUX_SCL_FUNC                       IOMUX_PINCM2_PF_I2C0_SCL
-
-
 /* Defines for UART_DEBUG */
 #define UART_DEBUG_INST                                                    UART0
 #define UART_DEBUG_INST_FREQUENCY                                       40000000
@@ -143,38 +127,6 @@ bool SYSCFG_DL_SYSCTL_SYSPLL_init(void);
 #define UART_DEBUG_BAUD_RATE                                            (115200)
 #define UART_DEBUG_IBRD_40_MHZ_115200_BAUD                                  (21)
 #define UART_DEBUG_FBRD_40_MHZ_115200_BAUD                                  (45)
-/* Defines for UART_Tly */
-#define UART_Tly_INST                                                      UART1
-#define UART_Tly_INST_FREQUENCY                                         40000000
-#define UART_Tly_INST_IRQHandler                                UART1_IRQHandler
-#define UART_Tly_INST_INT_IRQN                                    UART1_INT_IRQn
-#define GPIO_UART_Tly_RX_PORT                                              GPIOA
-#define GPIO_UART_Tly_TX_PORT                                              GPIOA
-#define GPIO_UART_Tly_RX_PIN                                       DL_GPIO_PIN_9
-#define GPIO_UART_Tly_TX_PIN                                       DL_GPIO_PIN_8
-#define GPIO_UART_Tly_IOMUX_RX                                   (IOMUX_PINCM20)
-#define GPIO_UART_Tly_IOMUX_TX                                   (IOMUX_PINCM19)
-#define GPIO_UART_Tly_IOMUX_RX_FUNC                    IOMUX_PINCM20_PF_UART1_RX
-#define GPIO_UART_Tly_IOMUX_TX_FUNC                    IOMUX_PINCM19_PF_UART1_TX
-#define UART_Tly_BAUD_RATE                                              (115200)
-#define UART_Tly_IBRD_40_MHZ_115200_BAUD                                    (21)
-#define UART_Tly_FBRD_40_MHZ_115200_BAUD                                    (45)
-/* Defines for UART_IMU601 */
-#define UART_IMU601_INST                                                   UART2
-#define UART_IMU601_INST_FREQUENCY                                      40000000
-#define UART_IMU601_INST_IRQHandler                             UART2_IRQHandler
-#define UART_IMU601_INST_INT_IRQN                                 UART2_INT_IRQn
-#define GPIO_UART_IMU601_RX_PORT                                           GPIOA
-#define GPIO_UART_IMU601_TX_PORT                                           GPIOA
-#define GPIO_UART_IMU601_RX_PIN                                   DL_GPIO_PIN_22
-#define GPIO_UART_IMU601_TX_PIN                                   DL_GPIO_PIN_21
-#define GPIO_UART_IMU601_IOMUX_RX                                (IOMUX_PINCM47)
-#define GPIO_UART_IMU601_IOMUX_TX                                (IOMUX_PINCM46)
-#define GPIO_UART_IMU601_IOMUX_RX_FUNC                 IOMUX_PINCM47_PF_UART2_RX
-#define GPIO_UART_IMU601_IOMUX_TX_FUNC                 IOMUX_PINCM46_PF_UART2_TX
-#define UART_IMU601_BAUD_RATE                                           (115200)
-#define UART_IMU601_IBRD_40_MHZ_115200_BAUD                                 (21)
-#define UART_IMU601_FBRD_40_MHZ_115200_BAUD                                 (45)
 
 
 
@@ -206,9 +158,9 @@ bool SYSCFG_DL_SYSCTL_SYSPLL_init(void);
 /* Port definition for Pin Group LED */
 #define LED_PORT                                                         (GPIOA)
 
-/* Defines for LED22: GPIOA.14 with pinCMx 36 on package pin 29 */
-#define LED_LED22_PIN                                           (DL_GPIO_PIN_14)
-#define LED_LED22_IOMUX                                          (IOMUX_PINCM36)
+/* Defines for LED22: GPIOA.0 with pinCMx 1 on package pin 1 */
+#define LED_LED22_PIN                                            (DL_GPIO_PIN_0)
+#define LED_LED22_IOMUX                                           (IOMUX_PINCM1)
 /* Port definition for Pin Group SPI_CS */
 #define SPI_CS_PORT                                                      (GPIOB)
 
@@ -221,18 +173,18 @@ bool SYSCFG_DL_SYSCTL_SYSPLL_init(void);
 /* Defines for Dir: GPIOA.27 with pinCMx 60 on package pin 47 */
 #define STP_pins_Dir_PIN                                        (DL_GPIO_PIN_27)
 #define STP_pins_Dir_IOMUX                                       (IOMUX_PINCM60)
-/* Port definition for Pin Group Keys */
-#define Keys_PORT                                                        (GPIOA)
+/* Port definition for Pin Group EN */
+#define EN_PORT                                                          (GPIOA)
 
-/* Defines for Key1_up: GPIOA.28 with pinCMx 3 on package pin 3 */
-#define Keys_Key1_up_PIN                                        (DL_GPIO_PIN_28)
-#define Keys_Key1_up_IOMUX                                        (IOMUX_PINCM3)
-/* Defines for Key2_dn: GPIOA.25 with pinCMx 55 on package pin 45 */
-#define Keys_Key2_dn_PIN                                        (DL_GPIO_PIN_25)
-#define Keys_Key2_dn_IOMUX                                       (IOMUX_PINCM55)
-/* Defines for Key3_ok: GPIOA.17 with pinCMx 39 on package pin 32 */
-#define Keys_Key3_ok_PIN                                        (DL_GPIO_PIN_17)
-#define Keys_Key3_ok_IOMUX                                       (IOMUX_PINCM39)
+/* Defines for En_pin: GPIOA.25 with pinCMx 55 on package pin 45 */
+#define EN_En_pin_PIN                                           (DL_GPIO_PIN_25)
+#define EN_En_pin_IOMUX                                          (IOMUX_PINCM55)
+/* Port definition for Pin Group KEY */
+#define KEY_PORT                                                         (GPIOB)
+
+/* Defines for key: GPIOB.14 with pinCMx 31 on package pin 24 */
+#define KEY_key_PIN                                             (DL_GPIO_PIN_14)
+#define KEY_key_IOMUX                                            (IOMUX_PINCM31)
 
 
 /* Defines for MCAN0 */
@@ -255,17 +207,18 @@ bool SYSCFG_DL_SYSCTL_SYSPLL_init(void);
 #define MCAN0_INST_MCAN_EXT_ID_FILT_START_ADDR     (48)
 #define MCAN0_INST_MCAN_EXT_ID_FILTER_NUM          (1)
 #define MCAN0_INST_MCAN_TX_BUFF_START_ADDR         (148)
-#define MCAN0_INST_MCAN_TX_BUFF_SIZE               (2)
-#define MCAN0_INST_MCAN_FIFO_1_START_ADDR          (192)
+#define MCAN0_INST_MCAN_TX_BUFF_SIZE               (1)
+#define MCAN0_INST_MCAN_FIFO_1_START_ADDR          (252)
 #define MCAN0_INST_MCAN_FIFO_1_NUM                 (2)
 #define MCAN0_INST_MCAN_TX_EVENT_START_ADDR        (164)
 #define MCAN0_INST_MCAN_TX_EVENT_SIZE              (2)
 #define MCAN0_INST_MCAN_EXT_ID_AND_MASK            (0x1FFFFFFFU)
-#define MCAN0_INST_MCAN_RX_BUFF_START_ADDR         (208)
-#define MCAN0_INST_MCAN_FIFO_0_START_ADDR          (172)
-#define MCAN0_INST_MCAN_FIFO_0_NUM                 (3)
+#define MCAN0_INST_MCAN_RX_BUFF_START_ADDR         (284)
+#define MCAN0_INST_MCAN_FIFO_0_START_ADDR          (180)
+#define MCAN0_INST_MCAN_FIFO_0_NUM                 (4)
 
-#define MCAN0_INST_MCAN_INTERRUPTS (DL_MCAN_INTR_MASK_ALL)
+#define MCAN0_INST_MCAN_INTERRUPTS (DL_MCAN_INTERRUPT_RF0N | \
+						DL_MCAN_INTERRUPT_TEFN)
 
 
 
@@ -280,10 +233,7 @@ void SYSCFG_DL_SYSCTL_init(void);
 bool SYSCFG_DL_SYSCTL_SYSPLL_init(void);
 void SYSCFG_DL_PWM_Step_init(void);
 void SYSCFG_DL_TIMER_TICK_init(void);
-void SYSCFG_DL_I2C_0_init(void);
 void SYSCFG_DL_UART_DEBUG_init(void);
-void SYSCFG_DL_UART_Tly_init(void);
-void SYSCFG_DL_UART_IMU601_init(void);
 void SYSCFG_DL_SPI_1_init(void);
 
 void SYSCFG_DL_MCAN0_init(void);

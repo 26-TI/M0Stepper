@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.30)
 include(mspm0g350x_base.cmake)
 
-project(m0test C CXX ASM)
+project(m0stepper C CXX ASM)
 
 file(GLOB FREERTOS_C_SOURCES "./FreeRTOS/*.c")
 file(GLOB FREERTOS_MEMMANG_C_SOURCES "./FreeRTOS/portable/MemMang/heap_4.c")

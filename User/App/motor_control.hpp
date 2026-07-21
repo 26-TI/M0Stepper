@@ -36,8 +36,8 @@ extern "C" {
 
 /* ---- 生命周期 ---- */
 void motor_init(void);
-void motor_tick(MT6816_Data *enc);          ///< 控制逻辑（GOTO/速度环），5ms 周期
-void motor_measure_tick(MT6816_Data *enc);  ///< 测速 + 角度记录（不碰硬件），1ms 周期
+void motor_tick(MT6816_Data *enc);          ///< 控制逻辑, 5ms 周期
+void motor_measure_tick(MT6816_Data *enc);  ///< 测速 + 角度 + 圈数跟踪, 1ms 周期
 
 /* ---- 速度指令（开环） ---- */
 void motor_set_speed(float rpm);
@@ -46,11 +46,13 @@ void motor_stop(void);
 /* ---- 位置指令（编码器闭环） ---- */
 void motor_move_to(float angle_deg);
 void motor_move_to_ex(float angle_deg, float max_rpm);
+void motor_move_to_multi(float angle_deg, int turns, float max_rpm);  ///< 多圈 GOTO
 int  motor_move_done(void);
 
 /* ---- 读取 ---- */
 float motor_speed(void);
 float motor_angle(void);
+int   motor_get_turns(void);            ///< 累计圈数
 float motor_target_speed(void);
 int   motor_is_moving(void);
 

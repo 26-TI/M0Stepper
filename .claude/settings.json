@@ -1,7 +1,14 @@
 {
   "permissions": {
     "allow": [
-      "Read(//c/ti/mspm0_sdk_2_10_00_04/source/ti/driverlib/**)"
+      "Read(//c/ti/mspm0_sdk_2_10_00_04/source/ti/driverlib/**)",
+      "Bash(pip install *)",
+      "Read(//c/ti/mspm0_sdk_2_10_00_04/examples/nortos/LP_MSPM0G3507/bsl/bsl_host_mcu_to_mspm0g1x0x_g3x0x_target_uart/**)",
+      "Bash(find d:/ -maxdepth 4 -type f -name \"dl_iomux.h\" -o -name \"mspm0g350x.h\" 2>/dev/null | head -10)",
+      "Read(//d//**)",
+      "Bash(grep -A20 \"IOMUX_PINCM23\\\\[PF\\\\]\\\\|IOMUX_PINCM24\\\\[PF\\\\]\" \"C:/ti/mspm0_sdk_2_10_00_04/source/ti/devices/msp/m0p/mspm0g351x.h\")",
+      "Read(//c/ti/mspm0_sdk_2_10_00_04/source/ti/devices/msp/m0p/**)",
+      "Bash(curl -s -I -H \"Authorization: token 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\" https://api.github.com/user)"
     ]
   }
 }

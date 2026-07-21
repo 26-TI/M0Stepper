@@ -19,5 +19,5 @@ REM DAPLink 配置文件路径
 set "DAPLINK_CFG=%~dp0daplink.cfg"
 
 REM 烧录
-"%OPENOCD_PATH%" -f "%DAPLINK_CFG%" -c "program \"%ELF_FILE%\" verify reset exit"
+"%OPENOCD_PATH%" -f "%DAPLINK_CFG%" -c "init; halt; program \"%ELF_FILE%\" verify reset; shutdown"
 pause

@@ -30,3 +30,9 @@ void *_sbrk(ptrdiff_t incr)
 
   return (void *)prev_heap_end;
 }
+
+int _isatty(int fd)
+{
+    (void)fd;
+    return 1;  /* assume all fd are TTY for printf */
+}

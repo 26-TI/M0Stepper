@@ -17,8 +17,9 @@ extern "C" {
 
 #define STEPS_PER_REV   6400    ///< 200 × 32 细分（配合驱动器拨码）
 
-void stepper_init(void);              ///< 初始化（停脉冲，DIR=正转）
+void stepper_init(void);              ///< 初始化（停脉冲，DIR=正转，EN=使能）
 void stepper_set_speed(float rpm);    ///< 设速度，>0=正转, <0=反转, |rpm|<0.5=停
+void stepper_enable(bool on);         ///< 使能/失能驱动器 (true=EN低)
 
 #ifdef __cplusplus
 }

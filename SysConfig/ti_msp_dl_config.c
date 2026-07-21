@@ -57,10 +57,7 @@ SYSCONFIG_WEAK void SYSCFG_DL_init(void)
     SYSCFG_DL_SYSCTL_init();
     SYSCFG_DL_PWM_Step_init();
     SYSCFG_DL_TIMER_TICK_init();
-    SYSCFG_DL_I2C_0_init();
     SYSCFG_DL_UART_DEBUG_init();
-    SYSCFG_DL_UART_Tly_init();
-    SYSCFG_DL_UART_IMU601_init();
     SYSCFG_DL_SPI_1_init();
     SYSCFG_DL_MCAN0_init();
     /* Ensure backup structures have no valid state */
@@ -106,10 +103,7 @@ SYSCONFIG_WEAK void SYSCFG_DL_initPower(void)
     DL_GPIO_reset(GPIOB);
     DL_TimerG_reset(PWM_Step_INST);
     DL_TimerA_reset(TIMER_TICK_INST);
-    DL_I2C_reset(I2C_0_INST);
     DL_UART_Main_reset(UART_DEBUG_INST);
-    DL_UART_Main_reset(UART_Tly_INST);
-    DL_UART_Main_reset(UART_IMU601_INST);
     DL_SPI_reset(SPI_1_INST);
     DL_MCAN_reset(MCAN0_INST);
 
@@ -117,10 +111,7 @@ SYSCONFIG_WEAK void SYSCFG_DL_initPower(void)
     DL_GPIO_enablePower(GPIOB);
     DL_TimerG_enablePower(PWM_Step_INST);
     DL_TimerA_enablePower(TIMER_TICK_INST);
-    DL_I2C_enablePower(I2C_0_INST);
     DL_UART_Main_enablePower(UART_DEBUG_INST);
-    DL_UART_Main_enablePower(UART_Tly_INST);
-    DL_UART_Main_enablePower(UART_IMU601_INST);
     DL_SPI_enablePower(SPI_1_INST);
     DL_MCAN_enablePower(MCAN0_INST);
     delay_cycles(POWER_STARTUP_DELAY);
@@ -135,29 +126,10 @@ SYSCONFIG_WEAK void SYSCFG_DL_GPIO_init(void)
     DL_GPIO_initPeripheralOutputFunction(GPIO_PWM_Step_C0_IOMUX,GPIO_PWM_Step_C0_IOMUX_FUNC);
     DL_GPIO_enableOutput(GPIO_PWM_Step_C0_PORT, GPIO_PWM_Step_C0_PIN);
 
-    DL_GPIO_initPeripheralInputFunctionFeatures(GPIO_I2C_0_IOMUX_SDA,
-        GPIO_I2C_0_IOMUX_SDA_FUNC, DL_GPIO_INVERSION_DISABLE,
-        DL_GPIO_RESISTOR_NONE, DL_GPIO_HYSTERESIS_DISABLE,
-        DL_GPIO_WAKEUP_DISABLE);
-    DL_GPIO_initPeripheralInputFunctionFeatures(GPIO_I2C_0_IOMUX_SCL,
-        GPIO_I2C_0_IOMUX_SCL_FUNC, DL_GPIO_INVERSION_DISABLE,
-        DL_GPIO_RESISTOR_NONE, DL_GPIO_HYSTERESIS_DISABLE,
-        DL_GPIO_WAKEUP_DISABLE);
-    DL_GPIO_enableHiZ(GPIO_I2C_0_IOMUX_SDA);
-    DL_GPIO_enableHiZ(GPIO_I2C_0_IOMUX_SCL);
-
     DL_GPIO_initPeripheralOutputFunction(
         GPIO_UART_DEBUG_IOMUX_TX, GPIO_UART_DEBUG_IOMUX_TX_FUNC);
     DL_GPIO_initPeripheralInputFunction(
         GPIO_UART_DEBUG_IOMUX_RX, GPIO_UART_DEBUG_IOMUX_RX_FUNC);
-    DL_GPIO_initPeripheralOutputFunction(
-        GPIO_UART_Tly_IOMUX_TX, GPIO_UART_Tly_IOMUX_TX_FUNC);
-    DL_GPIO_initPeripheralInputFunction(
-        GPIO_UART_Tly_IOMUX_RX, GPIO_UART_Tly_IOMUX_RX_FUNC);
-    DL_GPIO_initPeripheralOutputFunction(
-        GPIO_UART_IMU601_IOMUX_TX, GPIO_UART_IMU601_IOMUX_TX_FUNC);
-    DL_GPIO_initPeripheralInputFunction(
-        GPIO_UART_IMU601_IOMUX_RX, GPIO_UART_IMU601_IOMUX_RX_FUNC);
 
     DL_GPIO_initPeripheralOutputFunction(
         GPIO_SPI_1_IOMUX_CS0, GPIO_SPI_1_IOMUX_CS0_FUNC);
@@ -177,24 +149,20 @@ SYSCONFIG_WEAK void SYSCFG_DL_GPIO_init(void)
 
     DL_GPIO_initDigitalOutput(STP_pins_Dir_IOMUX);
 
-    DL_GPIO_initDigitalInputFeatures(Keys_Key1_up_IOMUX,
-		 DL_GPIO_INVERSION_DISABLE, DL_GPIO_RESISTOR_PULL_UP,
-		 DL_GPIO_HYSTERESIS_DISABLE, DL_GPIO_WAKEUP_DISABLE);
+    DL_GPIO_initDigitalOutput(EN_En_pin_IOMUX);
 
-    DL_GPIO_initDigitalInputFeatures(Keys_Key2_dn_IOMUX,
-		 DL_GPIO_INVERSION_DISABLE, DL_GPIO_RESISTOR_PULL_UP,
-		 DL_GPIO_HYSTERESIS_DISABLE, DL_GPIO_WAKEUP_DISABLE);
-
-    DL_GPIO_initDigitalInputFeatures(Keys_Key3_ok_IOMUX,
-		 DL_GPIO_INVERSION_DISABLE, DL_GPIO_RESISTOR_PULL_UP,
+    DL_GPIO_initDigitalInputFeatures(KEY_key_IOMUX,
+		 DL_GPIO_INVERSION_DISABLE, DL_GPIO_RESISTOR_NONE,
 		 DL_GPIO_HYSTERESIS_DISABLE, DL_GPIO_WAKEUP_DISABLE);
 
     DL_GPIO_clearPins(GPIOA, LED_LED22_PIN |
-		STP_pins_Dir_PIN);
+		STP_pins_Dir_PIN |
+		EN_En_pin_PIN);
     DL_GPIO_enableOutput(GPIOA, LED_LED22_PIN |
-		STP_pins_Dir_PIN);
-    DL_GPIO_setPins(SPI_CS_PORT, SPI_CS_SPI_CS0_PIN);
-    DL_GPIO_enableOutput(SPI_CS_PORT, SPI_CS_SPI_CS0_PIN);
+		STP_pins_Dir_PIN |
+		EN_En_pin_PIN);
+    DL_GPIO_setPins(GPIOB, SPI_CS_SPI_CS0_PIN);
+    DL_GPIO_enableOutput(GPIOB, SPI_CS_SPI_CS0_PIN);
 
     DL_GPIO_initPeripheralOutputFunction(
         GPIO_MCAN0_IOMUX_CAN_TX, GPIO_MCAN0_IOMUX_CAN_TX_FUNC);
@@ -207,10 +175,10 @@ SYSCONFIG_WEAK void SYSCFG_DL_GPIO_init(void)
 static const DL_SYSCTL_SYSPLLConfig gSYSPLLConfig = {
     .inputFreq              = DL_SYSCTL_SYSPLL_INPUT_FREQ_32_48_MHZ,
 	.rDivClk2x              = 3,
-	.rDivClk1               = 1,
+	.rDivClk1               = 0,
 	.rDivClk0               = 0,
 	.enableCLK2x            = DL_SYSCTL_SYSPLL_CLK2X_DISABLE,
-	.enableCLK1             = DL_SYSCTL_SYSPLL_CLK1_DISABLE,
+	.enableCLK1             = DL_SYSCTL_SYSPLL_CLK1_ENABLE,
 	.enableCLK0             = DL_SYSCTL_SYSPLL_CLK0_ENABLE,
 	.sysPLLMCLK             = DL_SYSCTL_SYSPLL_MCLK_CLK0,
 	.sysPLLRef              = DL_SYSCTL_SYSPLL_REF_HFCLK,
@@ -401,34 +369,6 @@ SYSCONFIG_WEAK void SYSCFG_DL_TIMER_TICK_init(void) {
 }
 
 
-static const DL_I2C_ClockConfig gI2C_0ClockConfig = {
-    .clockSel = DL_I2C_CLOCK_BUSCLK,
-    .divideRatio = DL_I2C_CLOCK_DIVIDE_4,
-};
-
-SYSCONFIG_WEAK void SYSCFG_DL_I2C_0_init(void) {
-
-    DL_I2C_setClockConfig(I2C_0_INST,
-        (DL_I2C_ClockConfig *) &gI2C_0ClockConfig);
-    DL_I2C_setAnalogGlitchFilterPulseWidth(I2C_0_INST,
-        DL_I2C_ANALOG_GLITCH_FILTER_WIDTH_50NS);
-    DL_I2C_enableAnalogGlitchFilter(I2C_0_INST);
-
-    /* Configure Controller Mode */
-    DL_I2C_resetControllerTransfer(I2C_0_INST);
-    /* Set frequency to 500000 Hz*/
-    DL_I2C_setTimerPeriod(I2C_0_INST, 1);
-    DL_I2C_setControllerTXFIFOThreshold(I2C_0_INST, DL_I2C_TX_FIFO_LEVEL_EMPTY);
-    DL_I2C_setControllerRXFIFOThreshold(I2C_0_INST, DL_I2C_RX_FIFO_LEVEL_BYTES_1);
-    DL_I2C_enableControllerClockStretching(I2C_0_INST);
-
-
-    /* Enable module */
-    DL_I2C_enableController(I2C_0_INST);
-
-
-}
-
 static const DL_UART_Main_ClockConfig gUART_DEBUGClockConfig = {
     .clockSel    = DL_UART_MAIN_CLOCK_BUSCLK,
     .divideRatio = DL_UART_MAIN_CLOCK_DIVIDE_RATIO_1
@@ -466,80 +406,6 @@ SYSCONFIG_WEAK void SYSCFG_DL_UART_DEBUG_init(void)
 
     DL_UART_Main_enable(UART_DEBUG_INST);
 }
-static const DL_UART_Main_ClockConfig gUART_TlyClockConfig = {
-    .clockSel    = DL_UART_MAIN_CLOCK_BUSCLK,
-    .divideRatio = DL_UART_MAIN_CLOCK_DIVIDE_RATIO_1
-};
-
-static const DL_UART_Main_Config gUART_TlyConfig = {
-    .mode        = DL_UART_MAIN_MODE_NORMAL,
-    .direction   = DL_UART_MAIN_DIRECTION_TX_RX,
-    .flowControl = DL_UART_MAIN_FLOW_CONTROL_NONE,
-    .parity      = DL_UART_MAIN_PARITY_NONE,
-    .wordLength  = DL_UART_MAIN_WORD_LENGTH_8_BITS,
-    .stopBits    = DL_UART_MAIN_STOP_BITS_ONE
-};
-
-SYSCONFIG_WEAK void SYSCFG_DL_UART_Tly_init(void)
-{
-    DL_UART_Main_setClockConfig(UART_Tly_INST, (DL_UART_Main_ClockConfig *) &gUART_TlyClockConfig);
-
-    DL_UART_Main_init(UART_Tly_INST, (DL_UART_Main_Config *) &gUART_TlyConfig);
-    /*
-     * Configure baud rate by setting oversampling and baud rate divisors.
-     *  Target baud rate: 115200
-     *  Actual baud rate: 115190.78
-     */
-    DL_UART_Main_setOversampling(UART_Tly_INST, DL_UART_OVERSAMPLING_RATE_16X);
-    DL_UART_Main_setBaudRateDivisor(UART_Tly_INST, UART_Tly_IBRD_40_MHZ_115200_BAUD, UART_Tly_FBRD_40_MHZ_115200_BAUD);
-
-
-    /* Configure Interrupts */
-    DL_UART_Main_enableInterrupt(UART_Tly_INST,
-                                 DL_UART_MAIN_INTERRUPT_RX);
-    /* Setting the Interrupt Priority */
-    NVIC_SetPriority(UART_Tly_INST_INT_IRQN, 3);
-
-
-    DL_UART_Main_enable(UART_Tly_INST);
-}
-static const DL_UART_Main_ClockConfig gUART_IMU601ClockConfig = {
-    .clockSel    = DL_UART_MAIN_CLOCK_BUSCLK,
-    .divideRatio = DL_UART_MAIN_CLOCK_DIVIDE_RATIO_1
-};
-
-static const DL_UART_Main_Config gUART_IMU601Config = {
-    .mode        = DL_UART_MAIN_MODE_NORMAL,
-    .direction   = DL_UART_MAIN_DIRECTION_TX_RX,
-    .flowControl = DL_UART_MAIN_FLOW_CONTROL_NONE,
-    .parity      = DL_UART_MAIN_PARITY_NONE,
-    .wordLength  = DL_UART_MAIN_WORD_LENGTH_8_BITS,
-    .stopBits    = DL_UART_MAIN_STOP_BITS_ONE
-};
-
-SYSCONFIG_WEAK void SYSCFG_DL_UART_IMU601_init(void)
-{
-    DL_UART_Main_setClockConfig(UART_IMU601_INST, (DL_UART_Main_ClockConfig *) &gUART_IMU601ClockConfig);
-
-    DL_UART_Main_init(UART_IMU601_INST, (DL_UART_Main_Config *) &gUART_IMU601Config);
-    /*
-     * Configure baud rate by setting oversampling and baud rate divisors.
-     *  Target baud rate: 115200
-     *  Actual baud rate: 115190.78
-     */
-    DL_UART_Main_setOversampling(UART_IMU601_INST, DL_UART_OVERSAMPLING_RATE_16X);
-    DL_UART_Main_setBaudRateDivisor(UART_IMU601_INST, UART_IMU601_IBRD_40_MHZ_115200_BAUD, UART_IMU601_FBRD_40_MHZ_115200_BAUD);
-
-
-    /* Configure Interrupts */
-    DL_UART_Main_enableInterrupt(UART_IMU601_INST,
-                                 DL_UART_MAIN_INTERRUPT_RX);
-    /* Setting the Interrupt Priority */
-    NVIC_SetPriority(UART_IMU601_INST_INT_IRQN, 3);
-
-
-    DL_UART_Main_enable(UART_IMU601_INST);
-}
 
 static const DL_SPI_Config gSPI_1_config = {
     .mode        = DL_SPI_MODE_CONTROLLER,
@@ -575,15 +441,15 @@ SYSCONFIG_WEAK void SYSCFG_DL_SPI_1_init(void) {
 }
 
 static const DL_MCAN_ClockConfig gMCAN0ClockConf = {
-    .clockSel = DL_MCAN_FCLK_HFCLK,
+    .clockSel = DL_MCAN_FCLK_SYSPLLCLK1,
     .divider  = DL_MCAN_FCLK_DIV_1,
 };
 
 static const DL_MCAN_InitParams gMCAN0InitParams= {
 
 /* Initialize MCAN Init parameters.    */
-    .fdMode            = true,
-    .brsEnable         = true,
+    .fdMode            = false,
+    .brsEnable         = false,
     .txpEnable         = false,
     .efbi              = false,
     .pxhddisable       = false,
@@ -617,7 +483,7 @@ static const DL_MCAN_MsgRAMConfigParams gMCAN0MsgRAMConfigParams ={
     .txFIFOSize           = 0,
     /* Tx Buffer Element Size. */
     .txBufMode            = 0,
-    .txBufElemSize        = DL_MCAN_ELEM_SIZE_64BYTES,
+    .txBufElemSize        = DL_MCAN_ELEM_SIZE_8BYTES,
     /* Tx Event FIFO Start Address. */
     .txEventFIFOStartAddr = MCAN0_INST_MCAN_TX_EVENT_START_ADDR,
     /* Event FIFO Size. */
@@ -629,7 +495,7 @@ static const DL_MCAN_MsgRAMConfigParams gMCAN0MsgRAMConfigParams ={
     /* Number of Rx FIFO elements. */
     .rxFIFO0size          = MCAN0_INST_MCAN_FIFO_0_NUM,
     /* Rx FIFO0 Watermark. */
-    .rxFIFO0waterMark     = 3,
+    .rxFIFO0waterMark     = 1,
     .rxFIFO0OpMode        = 0,
     /* Rx FIFO1 Start Address. */
     .rxFIFO1startAddr     = MCAN0_INST_MCAN_FIFO_1_START_ADDR,
@@ -642,32 +508,44 @@ static const DL_MCAN_MsgRAMConfigParams gMCAN0MsgRAMConfigParams ={
     /* Rx Buffer Start Address. */
     .rxBufStartAddr       = MCAN0_INST_MCAN_RX_BUFF_START_ADDR,
     /* Rx Buffer Element Size. */
-    .rxBufElemSize        = DL_MCAN_ELEM_SIZE_64BYTES,
+    .rxBufElemSize        = DL_MCAN_ELEM_SIZE_8BYTES,
     /* Rx FIFO0 Element Size. */
-    .rxFIFO0ElemSize      = DL_MCAN_ELEM_SIZE_64BYTES,
+    .rxFIFO0ElemSize      = DL_MCAN_ELEM_SIZE_8BYTES,
     /* Rx FIFO1 Element Size. */
-    .rxFIFO1ElemSize      = DL_MCAN_ELEM_SIZE_64BYTES,
+    .rxFIFO1ElemSize      = DL_MCAN_ELEM_SIZE_8BYTES,
 };
 
+static const DL_MCAN_StdMsgIDFilterElement gMCAN0StdFiltelem = {
+    .sfec = 0x1,
+    .sft  = 0x0,
+    .sfid1 = 0,
+    .sfid2 = 2047,
+};
 
+static const DL_MCAN_ExtMsgIDFilterElement gMCAN0ExtFiltelem = {
+    .efec = 0x1,
+    .eft  = 0x3,
+    .efid1 = 0,
+    .efid2 = 0,
+};
 
 static const DL_MCAN_BitTimingParams   gMCAN0BitTimes = {
     /* Arbitration Baud Rate Pre-scaler. */
-    .nomRatePrescalar   = 1,
+    .nomRatePrescalar   = 0,
     /* Arbitration Time segment before sample point. */
-    .nomTimeSeg1        = 68,
+    .nomTimeSeg1        = 62,
     /* Arbitration Time segment after sample point. */
-    .nomTimeSeg2        = 9,
+    .nomTimeSeg2        = 15,
     /* Arbitration (Re)Synchronization Jump Width Range. */
-    .nomSynchJumpWidth  = 9,
+    .nomSynchJumpWidth  = 15,
     /* Data Baud Rate Pre-scaler. */
-    .dataRatePrescalar  = 1,
+    .dataRatePrescalar  = 0,
     /* Data Time segment before sample point. */
-    .dataTimeSeg1       = 16,
+    .dataTimeSeg1       = 0,
     /* Data Time segment after sample point. */
-    .dataTimeSeg2       = 1,
+    .dataTimeSeg2       = 0,
     /* Data (Re)Synchronization Jump Width.   */
-    .dataSynchJumpWidth = 1,
+    .dataSynchJumpWidth = 0,
 };
 
 
@@ -701,12 +579,17 @@ SYSCONFIG_WEAK void SYSCFG_DL_MCAN0_init(void) {
     /* Configure Message RAM Sections */
     DL_MCAN_msgRAMConfig(MCAN0_INST, (DL_MCAN_MsgRAMConfigParams*) &gMCAN0MsgRAMConfigParams);
 
+    /* Configure Standard ID filter element */
+    DL_MCAN_addStdMsgIDFilter(MCAN0_INST, 0U, (DL_MCAN_StdMsgIDFilterElement *) &gMCAN0StdFiltelem);
 
+    /* Configure Extended ID filter element*/
+    DL_MCAN_addExtMsgIDFilter(MCAN0_INST, 0U, (DL_MCAN_ExtMsgIDFilterElement *) &gMCAN0ExtFiltelem);
 
     /* Set Extended ID Mask. */
     DL_MCAN_setExtIDAndMask(MCAN0_INST, MCAN0_INST_MCAN_EXT_ID_AND_MASK );
 
     /* Loopback mode */
+    DL_MCAN_lpbkModeEnable(MCAN0_INST, DL_MCAN_LPBK_MODE_INTERNAL, true);
 
     /* Take MCAN out of the SW initialization mode */
     DL_MCAN_setOpMode(MCAN0_INST, DL_MCAN_OPERATION_MODE_NORMAL);
@@ -716,12 +599,12 @@ SYSCONFIG_WEAK void SYSCFG_DL_MCAN0_init(void) {
     /* Enable MCAN mopdule Interrupts */
     DL_MCAN_enableIntr(MCAN0_INST, MCAN0_INST_MCAN_INTERRUPTS, 1U);
 
-    DL_MCAN_selectIntrLine(MCAN0_INST, DL_MCAN_INTR_MASK_ALL, DL_MCAN_INTR_LINE_NUM_1);
-    DL_MCAN_enableIntrLine(MCAN0_INST, DL_MCAN_INTR_LINE_NUM_1, 1U);
+    DL_MCAN_selectIntrLine(MCAN0_INST, DL_MCAN_INTERRUPT_RF1N|DL_MCAN_INTERRUPT_TEFN, DL_MCAN_INTR_LINE_NUM_0);
+    DL_MCAN_enableIntrLine(MCAN0_INST, DL_MCAN_INTR_LINE_NUM_0, 1U);
 
     /* Enable MSPM0 MCAN interrupt */
-    DL_MCAN_clearInterruptStatus(MCAN0_INST,(DL_MCAN_MSP_INTERRUPT_LINE1));
-    DL_MCAN_enableInterrupt(MCAN0_INST,(DL_MCAN_MSP_INTERRUPT_LINE1));
+    DL_MCAN_clearInterruptStatus(MCAN0_INST,(DL_MCAN_MSP_INTERRUPT_LINE0));
+    DL_MCAN_enableInterrupt(MCAN0_INST,(DL_MCAN_MSP_INTERRUPT_LINE0));
 
 }
 

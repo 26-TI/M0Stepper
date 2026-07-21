@@ -1,82 +1,112 @@
 /**
  * @file can_protocol.cpp
- * @brief CAN 协议 — 指令解析 + 定时上报状态
+ * @brief CAN 协议 — 8 字节帧 + 多圈 + 校验
  *
- * 主机 → MSPM0: CAN ID 0x100, Data[0]=cmd, Data[1-2]=param1, Data[3-4]=param2
- * MSPM0 → 主机: CAN ID 0x200, Data[0]=status, Data[1-2]=angle×100, Data[3-4]=speed×10
+ * 命令 0x10N: [0]cmd [1-2]p1 i16 [3-4]p2 i16 [5-6]p3 i16 [7]CK
+ * 状态 0x20N: [0]stat [1-2]ang×100 i16 [3-4]rpm×10 i16 [5-6]turns i16 [7]CK
  */
 
-#include "can_protocol.hpp"
-#include "bsp_can.h"
-#include "motor_control.hpp"
+#define CAN_USE_IRQ 1
 
-static uint32_t g_tick = 0;
+#include "can_protocol.hpp"
+#include "bsp_can.hpp"
+#include "bsp_uart.h"
+#include "motor_control.hpp"
+#include "stepper_motor.h"
+
+static uint32_t g_tick;
+static uint32_t g_rx_cnt = 0;   ///< 收帧计数 (调试用)
+
+/* ---- 组装一帧状态并发送 ---- */
+static void send_status_frame(int16_t ang_x100, int16_t spd_x10, int16_t turns,
+                               uint8_t stat)
+{
+    uint8_t tx[8];
+    tx[0] = stat;
+    tx[1] = ang_x100 >> 8;   tx[2] = ang_x100;
+    tx[3] = spd_x10  >> 8;   tx[4] = spd_x10;
+    tx[5] = turns     >> 8;   tx[6] = turns;
+    tx[7] = can_checksum(tx, 7);
+    CAN_Send(CAN_ID_STAT, tx, 8);
+}
 
 void can_proto_init(void)
 {
-    bsp_can_init();
+    CAN_Init(CAN_MODE_NORMAL);
+#if CAN_USE_IRQ
+    CAN_EnableIrq();
+#endif
 }
 
 void can_proto_tick(void)
 {
     g_tick++;
 
-    /* ---- 处理接收 ---- */
-    uint32_t rx_id;
-    uint8_t  rx_data[8];
-    uint8_t  rx_len;
+#if !CAN_USE_IRQ
+    CAN_RecvPoll();
+#endif
 
-    if (bsp_can_recv(&rx_id, rx_data, &rx_len))
+    /* ---- 收指令 ---- */
+    uint32_t id; uint8_t d[8], len;
+    while (CAN_RecvRead(&id, d, &len))
     {
-        if (rx_id == CAN_ID_CMD && rx_len >= 3)
+        g_rx_cnt++;
+        bsp_uart_printf("CAN RX[%u] ID=0x%03X D=%02X %02X %02X %02X %02X %02X %02X %02X\r\n",
+                        (unsigned)g_rx_cnt, (unsigned)id,
+                        d[0], d[1], d[2], d[3], d[4], d[5], d[6], d[7]);
+        if (id == CAN_ID_CMD && len >= 8 && d[7] == can_checksum(d, 7))
         {
-            uint8_t  cmd    = rx_data[0];
-            int16_t  param1 = (int16_t)((rx_data[1] << 8) | rx_data[2]);
-            int16_t  param2 = (int16_t)((rx_data[3] << 8) | rx_data[4]);
+            int16_t p1 = (d[1]<<8)|d[2], p2 = (d[3]<<8)|d[4];
 
-            switch (cmd)
+            switch (d[0])
             {
-                case CMD_SET_ANGLE: {
-                    float angle   = (float)param1 / 100.0f;      // 角度 °
-                    float max_rpm = (float)param2;               // 限速 RPM
-                    motor_move_to_ex(angle, max_rpm);
+                case CMD_SPEED:
+                    motor_set_speed(p1 / 10.0f);
                     break;
-                }
+
+                case CMD_POSITION:
+                    motor_move_to_multi(p1 / 100.0f, p2, (int16_t)((d[5]<<8)|d[6]));
+                    break;
+
                 case CMD_STOP:
                     motor_stop();
                     break;
-                case CMD_OPEN_LOOP: {
-                    float rpm = (float)param1 / 10.0f;
-                    motor_set_speed(rpm);
+
+                case CMD_ENABLE:
+                    bsp_uart_printf("CAN CMD_ENABLE p1=%d\r\n", p1);
+                    stepper_enable(p1 != 0);
+                    break;
+
+                case CMD_QUERY:
+                {
+                    int16_t a = (int16_t)(motor_angle() * 100.0f);
+                    int16_t s = (int16_t)(motor_speed() * 10.0f);
+                    int16_t t = (int16_t)motor_get_turns();
+                    uint8_t st = motor_move_done() ? STAT_DONE :
+                                 (motor_target_speed()!=0||motor_is_moving()) ? STAT_MOVING : STAT_IDLE;
+
+                    switch (p1)
+                    {
+                        case 0x01: a = (int16_t)(motor_angle() * 100.0f); s = 0; t = 0; break; // 仅角度
+                        case 0x02: a = 0; s = (int16_t)(motor_speed() * 10.0f); t = 0; break;  // 仅速度
+                        case 0x03: a = 0; s = 0; t = (int16_t)motor_get_turns(); break;         // 仅圈数
+                        default: break;  // 0x00=全状态
+                    }
+                    send_status_frame(a, s, t, st);
                     break;
                 }
-                default:
-                    break;
             }
         }
     }
 
-    /* ---- 每 50ms 上报一次状态 ---- */
+    /* ---- 50ms 定时上报 ---- */
     if ((g_tick % 50) == 0)
     {
-        uint8_t tx[8];
-
-        int stat = STAT_IDLE;
-        if (motor_move_done())
-            stat = STAT_DONE;
-        else if (motor_target_speed() != 0.0f || motor_is_moving())
-            stat = STAT_MOVING;
-
-        int16_t angle_x100 = (int16_t)(motor_angle() * 100.0f);
-        int16_t speed_x10  = (int16_t)(motor_speed() * 10.0f);
-
-        tx[0] = (uint8_t)stat;
-        tx[1] = (uint8_t)(angle_x100 >> 8);
-        tx[2] = (uint8_t)(angle_x100);
-        tx[3] = (uint8_t)(speed_x10 >> 8);
-        tx[4] = (uint8_t)(speed_x10);
-        tx[5] = 0;  // 错误码保留
-
-        bsp_can_send(CAN_ID_STAT, tx, 6);
+        int16_t a = (int16_t)(motor_angle() * 100.0f);
+        int16_t s = (int16_t)(motor_speed() * 10.0f);
+        int16_t t = (int16_t)motor_get_turns();
+        uint8_t st = motor_move_done() ? STAT_DONE :
+                     (motor_target_speed()!=0||motor_is_moving()) ? STAT_MOVING : STAT_IDLE;
+        send_status_frame(a, s, t, st);
     }
 }
