@@ -15,6 +15,7 @@
 #include "task.h"
 
 #define F1D(v) (int)(v), (int)(((v)-(int)(v))*10.0f+0.5f)%10
+#define F2D(v) (int)(v), (int)(((v)-(int)(v))*100.0f+0.5f)%100
 
 extern "C" void TIMA0_IRQHandler(void)
 {
@@ -40,10 +41,11 @@ static void vCtrlTask(void *pvParams)
         if (++pt >= 100)
         {
             pt = 0;
-            float rpm = motor_speed();
+            float actual = motor_speed();
+            float target = motor_target_speed();
             bsp_led_toggle();
-            bsp_uart_printf("E:%d.%ddeg %d.%drpm\r\n",
-                            F1D(enc.angle), F1D(rpm));
+            bsp_uart_printf("Tgt:%d.%d Act:%d.%d Ang:%d.%02d\r\n",
+                            F1D(target), F1D(actual), F2D(enc.angle));
         }
 
         vTaskDelayUntil(&xLastWakeTime, pdMS_TO_TICKS(1));

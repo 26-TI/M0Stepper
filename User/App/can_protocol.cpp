@@ -65,7 +65,10 @@ void can_proto_tick(void)
                     break;
 
                 case CMD_POSITION:
-                    motor_move_to_multi(p1 / 100.0f, p2, (int16_t)((d[5]<<8)|d[6]));
+                    if (p2 != 0)
+                        motor_move_abs(p1 / 100.0f, p2, (int16_t)((d[5]<<8)|d[6]));
+                    else
+                        motor_move_to_ex(p1 / 100.0f, (float)(int16_t)((d[5]<<8)|d[6]));
                     break;
 
                 case CMD_STOP:

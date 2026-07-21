@@ -8,8 +8,9 @@
  *   motor_stop()               // 停
  *
  * === 位置控制（编码器闭环）===
- *   motor_move_to(90)          // 转到 90°（限速 45 RPM）
- *   motor_move_to_ex(180, 60)  // 转到 180°（限速 60 RPM）
+ *   motor_move_to(90)          // 单圈就近到 90°（限速 45）
+ *   motor_move_to_ex(180, 60)  // 单圈就近到 180° 限速 60
+ *   motor_move_abs(90, 3, 60)  // 绝对：第3圈 90° 限速 60
  *   motor_move_done()          // true=到位
  *
  * === 读取 ===
@@ -44,9 +45,9 @@ void motor_set_speed(float rpm);
 void motor_stop(void);
 
 /* ---- 位置指令（编码器闭环） ---- */
-void motor_move_to(float angle_deg);
-void motor_move_to_ex(float angle_deg, float max_rpm);
-void motor_move_to_multi(float angle_deg, int turns, float max_rpm);  ///< 多圈 GOTO
+void motor_move_to(float angle_deg);                                   ///< 单圈就近 GOTO
+void motor_move_to_ex(float angle_deg, float max_rpm);                 ///< 单圈就近 GOTO, 指定限速
+void motor_move_abs(float angle_deg, int turns, float max_rpm);        ///< 绝对位置 GOTO
 int  motor_move_done(void);
 
 /* ---- 读取 ---- */
