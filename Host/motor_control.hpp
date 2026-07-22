@@ -2,24 +2,13 @@
  * @file motor_control.hpp
  * @brief 步进电机控制类 — 速度开环 + 位置闭环 GOTO + 定时转动
  *
- * === 速度控制（开环）===
+ * === 用法 ===
+ *   MotorControl motor;
+ *   motor.init();
+ *   motor.measureTick(&enc);     // 1ms: 测速 + 圈数追踪
+ *   motor.controlTick(&enc);     // 5ms: GOTO/速度/定时控制
  *   motor.setSpeed(120);
- *   motor.setSpeed(-60);
- *   motor.stop();
- *
- * === 位置控制（编码器闭环）===
- *   motor.moveTo(90);             // 单圈就近到 90°（限速 45）
- *   motor.moveToEx(180, 60);      // 单圈就近到 180° 限速 60
- *   motor.moveAbs(90, 3, 60);     // 绝对：第3圈 90° 限速 60
- *   motor.timedMove(90, 2.0f);    // 2 秒内转到 90°
- *
- * === 读取 ===
- *   motor.speed();                // 实测 RPM
- *   motor.angle();                // 编码器角度 °
- *   motor.turns();                // 累计圈数
- *   motor.targetSpeed();          // 目标 RPM
- *   motor.isMoving();             // 运动中?
- *   motor.isDone();               // GOTO 到位?
+ *   motor.moveTo(90);
  */
 
 #ifndef __MOTOR_CONTROL_HPP__
@@ -31,7 +20,7 @@
 class MotorControl
 {
 public:
-    MotorControl();
+    MotorControl() = default;
     void init();
     void measureTick(MT6816_Data *enc);  ///< 1ms: 测速 + 圈数追踪
     void controlTick(MT6816_Data *enc);  ///< 5ms: 控制逻辑
@@ -60,27 +49,27 @@ private:
     enum Mode { IDLE, SPEED, GOTO, TIMED };
 
     SpeedMeasure sm_;
-    Mode         mode_         = IDLE;
-    float        targetRpm_    = 0.0f;
-    float        lastAngle_    = 0.0f;
-    int          totalTurns_   = 0;
-    bool         turnsInit_    = false;
+    Mode         mode_          = IDLE;
+    float        targetRpm_     = 0.0f;
+    float        lastAngle_     = 0.0f;
+    int          totalTurns_    = 0;
+    bool         turnsInit_     = false;
 
     /* GOTO */
-    float    gotoAbs_        = 0.0f;
-    float    gotoMaxRpm_     = 45.0f;
-    float    gotoCurRpm_     = 0.0f;
-    uint32_t gotoDoneTicks_  = 0;
+    float        gotoAbs_       = 0.0f;
+    float        gotoMaxRpm_    = 45.0f;
+    float        gotoCurRpm_    = 0.0f;
+    uint32_t     gotoDoneTicks_ = 0;
 
-    /* Timed */
-    uint32_t timedTicks_ = 0;
+    /* TIMED */
+    uint32_t     timedTicks_    = 0;
 
     static constexpr float KP          = 2.0f;
-    static constexpr float ACCEL       = 10.0f;   // 2000 RPM/s²
+    static constexpr float ACCEL       = 10.0f;
     static constexpr float MIN_RPM     = 5.0f;
     static constexpr float STOP_THRES  = 0.15f;
     static constexpr float BACK_THRES  = 1.0f;
-    static constexpr uint32_t DONE_TICKS = 120;   // 600ms
+    static constexpr uint32_t DONE_TICKS = 120;
 };
 
-#endif /* __MOTOR_CONTROL_HPP__ */
+#endif
