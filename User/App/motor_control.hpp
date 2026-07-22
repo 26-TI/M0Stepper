@@ -11,7 +11,9 @@
  *   motor_move_to(90)          // 单圈就近到 90°（限速 45）
  *   motor_move_to_ex(180, 60)  // 单圈就近到 180° 限速 60
  *   motor_move_abs(90, 3, 60)  // 绝对：第3圈 90° 限速 60
+ *   motor_timed_move(90, 2.0)  // 2 秒内转到 90°
  *   motor_move_done()          // true=到位
+ *   motor_timed_move_done()    // true=定时到位
  *
  * === 读取 ===
  *   motor_speed()              // 实测 RPM
@@ -48,7 +50,9 @@ void motor_stop(void);
 void motor_move_to(float angle_deg);                                   ///< 单圈就近 GOTO
 void motor_move_to_ex(float angle_deg, float max_rpm);                 ///< 单圈就近 GOTO, 指定限速
 void motor_move_abs(float angle_deg, int turns, float max_rpm);        ///< 绝对位置 GOTO
+void motor_timed_move(float angle_deg, float duration_s);              ///< 定时转到角度（就近）
 int  motor_move_done(void);
+int  motor_timed_move_done(void);
 
 /* ---- 读取 ---- */
 float motor_speed(void);

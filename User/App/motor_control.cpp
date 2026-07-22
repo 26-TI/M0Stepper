@@ -8,7 +8,7 @@
 #include "speed_measure.h"
 
 /* ---- 内部模式 ---- */
-typedef enum { MODE_IDLE, MODE_SPEED, MODE_GOTO } Mode;
+typedef enum { MODE_IDLE, MODE_SPEED, MODE_GOTO, MODE_TIMED } Mode;
 
 static SpeedMeasure g_sm;
 static Mode         g_mode          = MODE_IDLE;
@@ -29,6 +29,9 @@ static uint32_t  g_goto_done_ticks = 0;
 #define GOTO_STOP_THRES  0.15f     /* 接近目标时停转 */
 #define GOTO_BACK_THRES  1.0f      /* 停住后漂出 1° 才重调 */
 #define GOTO_DONE_TICKS  120       /* 稳定 600ms 判定到位 */
+
+/* ---- 定时转动参数 ---- */
+static uint32_t  g_timed_ticks = 0;
 
 /* ================================================================
  *  公开 API
@@ -114,6 +117,15 @@ void motor_tick(MT6816_Data *enc)
     /* ---- 速度开环 ---- */
     if (g_mode == MODE_SPEED)
         stepper_set_speed(g_target_rpm);
+
+    /* ---- 定时转动 ---- */
+    if (g_mode == MODE_TIMED)
+    {
+        if (g_timed_ticks > 0)
+            g_timed_ticks--;
+        else
+            g_mode = MODE_IDLE;  /* 时间到 */
+    }
 }
 
 /* ---- 速度指令 ---- */
@@ -126,8 +138,9 @@ void motor_set_speed(float rpm)
 
 void motor_stop(void)
 {
-    g_mode       = MODE_IDLE;
-    g_target_rpm = 0.0f;
+    g_mode         = MODE_IDLE;
+    g_target_rpm   = 0.0f;
+    g_timed_ticks  = 0;
     stepper_set_speed(0.0f);
 }
 
@@ -164,6 +177,30 @@ void motor_move_abs(float angle_deg, int turns, float max_rpm)
 int motor_move_done(void)
 {
     return g_goto_done_ticks >= GOTO_DONE_TICKS;
+}
+
+void motor_timed_move(float angle_deg, float duration_s)
+{
+    /* 就近计算距离 */
+    float cur_abs = g_total_turns * 360.0f + g_last_angle;
+    float target  = angle_deg;
+    while (target - cur_abs > 180.0f)   target -= 360.0f;
+    while (target - cur_abs < -180.0f)  target += 360.0f;
+    float dist = target - cur_abs;  /* 带符号角度差 */
+
+    /* RPM = 距离(°) / 360 × 60 / 时间(s) */
+    float rpm = dist / 360.0f * 60.0f / duration_s;
+
+    g_mode        = MODE_TIMED;
+    g_target_rpm  = rpm;
+    g_timed_ticks = (uint32_t)(duration_s * 200.0f);  /* 200 ticks/s (5ms周期) */
+
+    stepper_set_speed(rpm);
+}
+
+int motor_timed_move_done(void)
+{
+    return g_mode != MODE_TIMED;
 }
 
 /* ---- 读取 ---- */

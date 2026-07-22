@@ -71,6 +71,10 @@ void can_proto_tick(void)
                         motor_move_to_ex(p1 / 100.0f, (float)(int16_t)((d[5]<<8)|d[6]));
                     break;
 
+                case CMD_TIMED:
+                    motor_timed_move(p1 / 100.0f, (float)p2 / 1000.0f);
+                    break;
+
                 case CMD_STOP:
                     motor_stop();
                     break;
