@@ -22,3 +22,5 @@ compile_commands.json
 
 # === SysConfig 生成的事件图（每次生成都会变） ===
 SysConfig/Event.dot
+CMakePresets.json
+mspm0g350x_base.cmake
