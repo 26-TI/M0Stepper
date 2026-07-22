@@ -5,6 +5,7 @@
 
 #include "motor_control.hpp"
 #include "stepper_motor.h"
+#include "bsp_uart.h"
 #include <math.h>
 
 MotorControl::MotorControl() {}
@@ -87,10 +88,41 @@ void MotorControl::controlTick(MT6816_Data *enc)
         break;
 
     case TIMED:
-        if (timedTicks_ > 0)
+        if (timedTicks_ > 0) {
             timedTicks_--;
-        else
-            mode_ = IDLE;
+
+            /* 位置轨迹：线性插值 (start→target) */
+            float frac  = 1.0f - (float)timedTicks_ / (float)timedTotalTicks_;
+            float traj  = timedStartPos_ + (timedTargetAbs_ - timedStartPos_) * frac;
+            float error = traj - (totalTurns_ * 360.0f + enc->angle);
+
+            /* 前馈速度：轨迹斜率对应的 RPM（正RPM→角度减小，取反） */
+            float trajVel = (timedTargetAbs_ - timedStartPos_) / (timedTotalTicks_ * 0.005f);
+            float ffRpm   = -trajVel / 360.0f * 60.0f;
+
+            /* 反馈校正 */
+            float fbRpm = -error * KP;
+
+            float rpm = ffRpm + fbRpm;
+            if (rpm > timedMaxRpm_)  rpm = timedMaxRpm_;
+            if (rpm < -timedMaxRpm_) rpm = -timedMaxRpm_;
+
+            /* 加速度限制 */
+            float delta = rpm - gotoCurRpm_;
+            if (delta > ACCEL)  rpm = gotoCurRpm_ + ACCEL;
+            if (delta < -ACCEL) rpm = gotoCurRpm_ - ACCEL;
+            gotoCurRpm_ = rpm;
+
+            targetRpm_ = rpm;
+            stepper_set_speed(rpm);
+        } else {
+            /* 轨迹结束 → GOTO 精确收尾 */
+            gotoAbs_       = timedTargetAbs_;
+            gotoMaxRpm_    = 10.0f;
+            gotoDoneTicks_ = 0;
+            gotoCurRpm_    = 0.0f;
+            mode_ = GOTO;
+        }
         break;
 
     default:
@@ -110,9 +142,10 @@ void MotorControl::setSpeed(float rpm)
 
 void MotorControl::stop()
 {
-    mode_       = IDLE;
-    targetRpm_  = 0.0f;
-    timedTicks_ = 0;
+    mode_          = IDLE;
+    targetRpm_     = 0.0f;
+    timedTicks_    = 0;
+    gotoDoneTicks_ = 0;
     stepper_set_speed(0.0f);
 }
 
@@ -129,13 +162,15 @@ void MotorControl::moveTo(float angle_deg, float max_rpm)
     while (target - curAbs < -180.0f) target += 360.0f;
     int turns = (int)(target / 360.0f);
     if (target < 0) turns--;
-    moveAbs(angle_deg, turns, max_rpm);
+    float normAngle = angle_deg - (int)(angle_deg / 360.0f) * 360.0f;
+    if (normAngle < 0) normAngle += 360.0f;
+    moveAbs(normAngle, turns, max_rpm);
 }
 
 void MotorControl::moveAbs(float angle_deg, int turns, float max_rpm)
 {
     gotoAbs_       = turns * 360.0f + angle_deg;
-    gotoMaxRpm_    = max_rpm > 0 ? max_rpm : 45.0f;
+    gotoMaxRpm_    = max_rpm > 0 ? max_rpm : 120.0f;
     gotoDoneTicks_ = 0;
     gotoCurRpm_    = 0.0f;
     mode_ = GOTO;
@@ -152,20 +187,32 @@ bool MotorControl::isDone() const
 
 void MotorControl::timedMove(float angle_deg, float duration_s)
 {
-    /* 就近计算距离 */
+    if (duration_s < 0.01f) return;  /* 时长太短，忽略 */
+    /* 就近计算目标 */
     float curAbs = totalTurns_ * 360.0f + lastAngle_;
     float target = angle_deg;
     while (target - curAbs > 180.0f)  target -= 360.0f;
     while (target - curAbs < -180.0f) target += 360.0f;
-    float dist = target - curAbs;
 
-    /* RPM = 距离(°) / 360 × 60 / 时间(s) */
-    float rpm = dist / 360.0f * 60.0f / duration_s;
+    /* 轨迹参数 */
+    timedStartPos_    = curAbs;
+    timedTargetAbs_   = target;
+    timedTotalTicks_  = (uint32_t)(duration_s * 200.0f);
+    timedTicks_       = timedTotalTicks_;
+    /* 最大转速 = 平均的 2 倍（梯形顶速），不低于 10 RPM */
+    float distDeg    = fabsf(target - curAbs);
+    float avgRpm     = distDeg / 360.0f * 60.0f / duration_s;
+    timedMaxRpm_     = avgRpm * 2.0f;
+    if (timedMaxRpm_ < 10.0f) timedMaxRpm_ = 10.0f;
+    if (timedMaxRpm_ > 500.0f) timedMaxRpm_ = 500.0f;
 
-    mode_       = TIMED;
-    targetRpm_  = rpm;
-    timedTicks_ = (uint32_t)(duration_s * 200.0f);
-    stepper_set_speed(rpm);
+    bsp_uart_printf("TIMED dist=%d.%ddeg max=%d.%dRPM dur=%ds\r\n",
+        (int)distDeg, (int)(distDeg*10)%10,
+        (int)timedMaxRpm_, (int)(timedMaxRpm_*10)%10,
+        (int)duration_s);
+
+    mode_ = TIMED;
+    gotoCurRpm_ = 0.0f;
 }
 
 bool MotorControl::timedMoveDone() const

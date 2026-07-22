@@ -8,7 +8,6 @@
 #include "can_protocol.hpp"
 #include "motor_control.hpp"
 #include "bsp_can.hpp"
-#include "bsp_uart.h"
 #include "stepper_motor.h"
 
 CanProtocol::CanProtocol(MotorControl &motor, uint8_t id)
@@ -17,9 +16,9 @@ CanProtocol::CanProtocol(MotorControl &motor, uint8_t id)
 
 void CanProtocol::init()
 {
-    CAN_Init(CAN_MODE_NORMAL);
+    bsp_can.init(BspCan::NORMAL);
 #if CAN_USE_IRQ
-    CAN_EnableIrq();
+    bsp_can.enableIrq();
 #endif
 }
 
@@ -28,17 +27,15 @@ void CanProtocol::tick()
     tick_++;
 
 #if !CAN_USE_IRQ
-    CAN_RecvPoll();
+    bsp_can.recvPoll();
 #endif
 
     /* ---- 收指令 ---- */
     uint32_t id; uint8_t d[8], len;
-    while (CAN_RecvRead(&id, d, &len))
+    while (bsp_can.recvRead(&id, d, &len))
     {
         rxCnt_++;
-        bsp_uart_printf("CAN RX[%u] ID=0x%03X D=%02X %02X %02X %02X %02X %02X %02X %02X\r\n",
-                        (unsigned)rxCnt_, (unsigned)id,
-                        d[0], d[1], d[2], d[3], d[4], d[5], d[6], d[7]);
+        // bsp_uart_printf CAN RX 太慢(5ms)，锁内禁用，只在定时调试时打开
 
         if (id == CAN_ID_CMD && len >= 8 && d[7] == can_checksum(d, 7))
         {
@@ -66,7 +63,7 @@ void CanProtocol::tick()
                     break;
 
                 case CMD_ENABLE:
-                    bsp_uart_printf("CAN CMD_ENABLE p1=%d\r\n", p1);
+                    // bsp_uart_printf CAN CMD enabled (takes 5ms in mutex)
                     stepper_enable(p1 != 0);
                     break;
 
@@ -113,5 +110,5 @@ void CanProtocol::sendStatus(int16_t ang_x100, int16_t spd_x10, int16_t turns,
     tx[3] = spd_x10  >> 8;   tx[4] = spd_x10;
     tx[5] = turns     >> 8;   tx[6] = turns;
     tx[7] = can_checksum(tx, 7);
-    CAN_Send(CAN_ID_STAT, tx, 8);
+    bsp_can.send(CAN_ID_STAT, tx, 8);
 }

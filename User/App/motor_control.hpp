@@ -8,8 +8,8 @@
  *   motor.stop();
  *
  * === 位置控制（编码器闭环）===
- *   motor.moveTo(90);             // 单圈就近到 90°（限速 45）
- *   motor.moveToEx(180, 60);      // 单圈就近到 180° 限速 60
+ *   motor.moveTo(90);             // 单圈就近到 90°（默认限速 120）
+ *   motor.moveToEx(180, 200);     // 单圈就近到 180° 限速 200
  *   motor.moveAbs(90, 3, 60);     // 绝对：第3圈 90° 限速 60
  *   motor.timedMove(90, 2.0f);    // 2 秒内转到 90°
  *
@@ -72,8 +72,12 @@ private:
     float    gotoCurRpm_     = 0.0f;
     uint32_t gotoDoneTicks_  = 0;
 
-    /* Timed */
-    uint32_t timedTicks_ = 0;
+    /* Timed (轨迹跟踪) */
+    uint32_t timedTicks_     = 0;
+    uint32_t timedTotalTicks_= 0;
+    float    timedStartPos_  = 0.0f;  // 起始绝对位置
+    float    timedTargetAbs_ = 0.0f;  // 目标绝对位置
+    float    timedMaxRpm_    = 0.0f;
 
     static constexpr float KP          = 2.0f;
     static constexpr float ACCEL       = 10.0f;   // 2000 RPM/s²
