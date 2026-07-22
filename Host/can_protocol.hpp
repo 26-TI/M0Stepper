@@ -40,6 +40,7 @@ void can_motor_tick(void);          ///< 每 1ms 调用 — 收状态帧 + 更�
 void can_motor_set_speed(uint8_t id, float rpm);
 void can_motor_move_to(uint8_t id, float angle_deg, float max_rpm);    ///< 就近路径, 单圈内最多180°
 void can_motor_move_abs(uint8_t id, float angle_deg, int turns, float max_rpm); ///< 绝对位置, 含圈数
+void can_motor_timed_move(uint8_t id, float angle_deg, float duration_s); ///< 定时转动
 void can_motor_stop(uint8_t id);
 void can_motor_enable(uint8_t id, bool on);
 void can_motor_query(uint8_t id, uint8_t sub);   ///< sub: 0=全 1=角 2=速 3=圈

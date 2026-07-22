@@ -33,6 +33,7 @@ enum {
     M0ST_CMD_STOP     = 0x03,
     M0ST_CMD_ENABLE   = 0x04,
     M0ST_CMD_QUERY    = 0x05,
+    M0ST_CMD_TIMED    = 0x06,
 };
 
 enum {
@@ -102,7 +103,7 @@ static inline void m0st_build(uint8_t d[8],
 
 /* ---- 速度控制 ---- */
 
-/** 速度控制（开环）
+/** 速度控制
  *  @param motor_id  电机号 (1~N)
  *  @param rpm       目标转速 RPM，正=正转，负=反转
  */
@@ -139,6 +140,20 @@ static inline void m0st_move_to(uint8_t motor_id,
                                 float angle_deg, float max_rpm)
 {
     m0st_move_abs(motor_id, angle_deg, 0, max_rpm);  /* turns=0 → 固件走就近路径 */
+}
+
+/* ---- 定时转动 ---- */
+
+/** 定时转到目标角度（开环等速）
+ *  @param motor_id    电机号
+ *  @param angle_deg   目标角度 °
+ *  @param duration_s  时长 秒
+ */
+static inline void m0st_timed_move(uint8_t motor_id, float angle_deg, float duration_s)
+{
+    uint8_t d[8];
+    m0st_build(d, M0ST_CMD_TIMED, (int16_t)(angle_deg * 100.0f), (int16_t)(duration_s * 1000.0f), 0);
+    g_m0st_send(0x100 + motor_id, d, 8);
 }
 
 /* ---- 停止 ---- */
