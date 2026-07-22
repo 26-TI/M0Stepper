@@ -1,90 +1,117 @@
 /**
  * @file can_protocol.cpp
- * @brief 主控端 CAN 电机控制库实现
- *
- * 发送: m0stepper_host.h 构建命令 → bsp_can_send()
- * 接收: bsp_can_recv_read() → 匹配 0x200+N → m0st_parse_status() → 缓存
+ * @brief CAN 协议类实现 — 指令解析 + 状态上报
  */
 
+#define CAN_USE_IRQ 1
+
 #include "can_protocol.hpp"
-#include "bsp_can.h"
-#include <string.h>
+#include "motor_control.hpp"
+#include "bsp_can.hpp"
+#include "bsp_uart.h"
+#include "stepper_motor.h"
 
-#define MAX_MOTORS 8
+CanProtocol::CanProtocol(MotorControl &motor, uint8_t id)
+    : motor_(motor), motorId_(id)
+{}
 
-static M0Stepper_Status g_st[MAX_MOTORS];
-static bool             g_st_ok[MAX_MOTORS];
-
-/* ---- 发送包装（m0stepper_send_fn）---- */
-static void send_fn(uint32_t id, const uint8_t *data, uint8_t len)
+void CanProtocol::init()
 {
-    bsp_can_send(id, (uint8_t *)data, len);
+    CAN_Init(CAN_MODE_NORMAL);
+#if CAN_USE_IRQ
+    CAN_EnableIrq();
+#endif
 }
 
-/* ================================================================
- *  生命周期
- * ================================================================ */
-
-void can_motor_init(void)
+void CanProtocol::tick()
 {
-    bsp_can_init();
-    bsp_can_enable_irq();
-    m0stepper_bind(send_fn);
-    memset(g_st_ok, 0, sizeof(g_st_ok));
-}
+    tick_++;
 
-void can_motor_tick(void)
-{
-    uint32_t rx_id;
-    uint8_t  d[8], len;
+#if !CAN_USE_IRQ
+    CAN_RecvPoll();
+#endif
 
-    while (bsp_can_recv_read(&rx_id, d, &len))
+    /* ---- 收指令 ---- */
+    uint32_t id; uint8_t d[8], len;
+    while (CAN_RecvRead(&id, d, &len))
     {
-        if (rx_id >= 0x201 && rx_id <= 0x200 + MAX_MOTORS && len >= 8)
+        rxCnt_++;
+        bsp_uart_printf("CAN RX[%u] ID=0x%03X D=%02X %02X %02X %02X %02X %02X %02X %02X\r\n",
+                        (unsigned)rxCnt_, (unsigned)id,
+                        d[0], d[1], d[2], d[3], d[4], d[5], d[6], d[7]);
+
+        if (id == CAN_ID_CMD && len >= 8 && d[7] == can_checksum(d, 7))
         {
-            uint8_t id = (uint8_t)(rx_id - 0x200);
-            if (id >= 1 && id <= MAX_MOTORS)
+            int16_t p1 = (d[1]<<8)|d[2], p2 = (d[3]<<8)|d[4];
+
+            switch (d[0])
             {
-                m0st_parse_status(d, &g_st[id - 1]);
-                g_st_ok[id - 1] = g_st[id - 1].ck_ok;
+                case CMD_SPEED:
+                    motor_.setSpeed(p1 / 10.0f);
+                    break;
+
+                case CMD_POSITION:
+                    if (p2 != 0)
+                        motor_.moveAbs(p1 / 100.0f, p2, (int16_t)((d[5]<<8)|d[6]));
+                    else
+                        motor_.moveTo(p1 / 100.0f, (float)(int16_t)((d[5]<<8)|d[6]));
+                    break;
+
+                case CMD_TIMED:
+                    motor_.timedMove(p1 / 100.0f, (float)p2 / 1000.0f);
+                    break;
+
+                case CMD_STOP:
+                    motor_.stop();
+                    break;
+
+                case CMD_ENABLE:
+                    bsp_uart_printf("CAN CMD_ENABLE p1=%d\r\n", p1);
+                    stepper_enable(p1 != 0);
+                    break;
+
+                case CMD_QUERY:
+                {
+                    int16_t a = (int16_t)(motor_.angle() * 100.0f);
+                    int16_t s = (int16_t)(motor_.speed() * 10.0f);
+                    int16_t t = (int16_t)motor_.turns();
+                    uint8_t st = motor_.isDone()     ? STAT_DONE :
+                                 motor_.isMoving() ? STAT_MOVING : STAT_IDLE;
+
+                    switch (p1)
+                    {
+                        case 0x01: a = (int16_t)(motor_.angle() * 100.0f); s = 0; t = 0; break;
+                        case 0x02: a = 0; s = (int16_t)(motor_.speed() * 10.0f); t = 0; break;
+                        case 0x03: a = 0; s = 0; t = (int16_t)motor_.turns();    break;
+                        default: break;
+                    }
+                    sendStatus(a, s, t, st);
+                    break;
+                }
             }
         }
     }
+
+    /* ---- 50ms 定时上报 ---- */
+    if ((tick_ % 50) == 0)
+    {
+        int16_t a = (int16_t)(motor_.angle() * 100.0f);
+        int16_t s = (int16_t)(motor_.speed() * 10.0f);
+        int16_t t = (int16_t)motor_.turns();
+        uint8_t st = motor_.isDone()     ? STAT_DONE :
+                     motor_.isMoving() ? STAT_MOVING : STAT_IDLE;
+        sendStatus(a, s, t, st);
+    }
 }
 
-/* ================================================================
- *  电机控制命令
- * ================================================================ */
-
-void can_motor_set_speed(uint8_t id, float rpm)         { m0st_set_speed(id, rpm); }
-void can_motor_move_to(uint8_t id, float ang, float r)  { m0st_move_to(id, ang, r); }
-void can_motor_move_abs(uint8_t id, float ang, int t, float r) { m0st_move_abs(id, ang, t, r); }
-void can_motor_timed_move(uint8_t id, float ang, float dur)   { m0st_timed_move(id, ang, dur); }
-void can_motor_stop(uint8_t id)                               { m0st_stop(id); }
-void can_motor_enable(uint8_t id, bool on)          { m0st_enable(id, on); }
-void can_motor_query(uint8_t id, uint8_t sub)       { m0st_query(id, sub); }
-
-/* ================================================================
- *  状态读取
- * ================================================================ */
-
-static M0Stepper_Status *get_st(uint8_t id)
+void CanProtocol::sendStatus(int16_t ang_x100, int16_t spd_x10, int16_t turns,
+                              uint8_t stat)
 {
-    if (id < 1 || id > MAX_MOTORS || !g_st_ok[id - 1]) return NULL;
-    return &g_st[id - 1];
-}
-
-bool  can_motor_has_status(uint8_t id)        { return get_st(id) != NULL; }
-float can_motor_get_angle(uint8_t id)          { M0Stepper_Status *s = get_st(id); return s ? s->angle_deg : 0.0f; }
-float can_motor_get_speed(uint8_t id)          { M0Stepper_Status *s = get_st(id); return s ? s->rpm : 0.0f; }
-int   can_motor_get_state(uint8_t id)          { M0Stepper_Status *s = get_st(id); return s ? s->state : -1; }
-int   can_motor_get_turns(uint8_t id)          { M0Stepper_Status *s = get_st(id); return s ? s->turns : 0; }
-bool  can_motor_is_done(uint8_t id)            { M0Stepper_Status *s = get_st(id); return s ? m0st_is_done(s) : false; }
-
-bool can_motor_get_full_status(uint8_t id, M0Stepper_Status *st)
-{
-    M0Stepper_Status *s = get_st(id);
-    if (!s) return false;
-    *st = *s;
-    return true;
+    uint8_t tx[8];
+    tx[0] = stat;
+    tx[1] = ang_x100 >> 8;   tx[2] = ang_x100;
+    tx[3] = spd_x10  >> 8;   tx[4] = spd_x10;
+    tx[5] = turns     >> 8;   tx[6] = turns;
+    tx[7] = can_checksum(tx, 7);
+    CAN_Send(CAN_ID_STAT, tx, 8);
 }
