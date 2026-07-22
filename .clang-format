@@ -52,7 +52,7 @@ AlignOperands:   true
 # -- Empty - 只把空的函数放在同一行
 # -- Inline - 把类内的内联函数放在同一行，全局的空函数不放在同一行
 # -- All - 都允许放在同一行
-AllowShortFunctionsOnASingleLine: InlineOnly
+AllowShortFunctionsOnASingleLine: All
 
 # # 短的if语句保持在同一行
 # AllowShortIfStatementsOnASingleLine: true

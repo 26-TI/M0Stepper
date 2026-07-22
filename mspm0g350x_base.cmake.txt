@@ -39,7 +39,7 @@ set(SYSCONFIG_PATH  ${CMAKE_SOURCE_DIR}/SysConfig)
 #这一行要看你用SDK的安装路径去更改，改成你用的SDK的路径 
 ################################# 
 #################################
-set(MSPM0_SDK_PATH  C:/ti/mspm0_sdk_2_10_00_04)
+set(MSPM0_SDK_PATH  /home/rh/ti/mspm0_sdk_2_10_00_04)
 
 #######################
 # 设置编译选项
@@ -91,3 +91,6 @@ file(GLOB_RECURSE SYSCONFIG_SOURCES
 )
 
 add_compile_options(-fno-exceptions)
+
+add_link_options(-Wl,--no-warn-rwx-segments)
+

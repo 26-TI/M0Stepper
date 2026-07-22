@@ -1,3 +1,24 @@
+# === 构建输出 ===
 build/
+
+# === 编译产物 ===
 *.elf
 *.o
+*.bin
+*.hex
+*.out
+*.a
+*.d
+*.map
+
+# === CMake 生成文件 ===
+compile_commands.json
+
+# === 编辑器临时文件 ===
+*.swp
+*.swo
+*~
+.DS_Store
+
+# === SysConfig 生成的事件图（每次生成都会变） ===
+SysConfig/Event.dot
