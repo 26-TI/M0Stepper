@@ -1,106 +1,74 @@
 /**
  * @file bsp_can.cpp
- * @author Rh
- * @brief CAN 通信 BSP 层实现
- * @version 1.0
- * @date 2026-07-20
- *
- * @copyright Copyright (c) 2026
+ * @brief CAN BSP 层实现 — 非阻塞发送 + 环形接收缓冲 + ISR
  */
 
 #include "bsp_can.hpp"
 #include <string.h>
 
-/* ===================================================================
- * 接收环形缓冲
- * =================================================================== */
+/* ---- 全局实例 ---- */
+BspCan bsp_can;
 
-#define CAN_RX_BUF_SIZE 16
-
-static volatile uint32_t s_rxBufId[CAN_RX_BUF_SIZE];
-static volatile uint8_t  s_rxBufData[CAN_RX_BUF_SIZE][8];
-static volatile uint8_t  s_rxBufLen[CAN_RX_BUF_SIZE];
-static volatile uint8_t  s_rxBufHead = 0;
-static volatile uint8_t  s_rxBufTail = 0;
-
-static bool s_loopback = false;
-
-/* ===================================================================
- * 内部辅助
- * =================================================================== */
-
-/**
- * @brief 写受保护寄存器前解锁
- */
-static void can_write_unlock(void)
+/* ---- ISR ---- */
+extern "C" void MCAN0_INST_IRQHandler(void)
 {
-    /* CCCR.CCE = 1, CCCR.INIT = 1 */
+    bsp_can.isrHandler();
+}
+
+/* ================================================================
+ *  辅助
+ * ================================================================ */
+
+void BspCan::writeUnlock()
+{
     MCAN0_INST->MCANSS.MCAN.MCAN_CCCR |= (MCAN_CCCR_CCE_MASK | MCAN_CCCR_INIT_MASK);
     while (0U == (MCAN0_INST->MCANSS.MCAN.MCAN_CCCR & MCAN_CCCR_INIT_MASK));
 }
 
-/**
- * @brief 写受保护寄存器后锁定
- */
-static void can_write_lock(void)
+void BspCan::writeLock()
 {
     MCAN0_INST->MCANSS.MCAN.MCAN_CCCR &= ~MCAN_CCCR_CCE_MASK;
     MCAN0_INST->MCANSS.MCAN.MCAN_CCCR &= ~MCAN_CCCR_INIT_MASK;
     while (0U != (MCAN0_INST->MCANSS.MCAN.MCAN_CCCR & MCAN_CCCR_INIT_MASK));
 }
 
-/* ===================================================================
- * API 实现
- * =================================================================== */
+/* ================================================================
+ *  API
+ * ================================================================ */
 
-void CAN_Init(CAN_Mode mode)
+void BspCan::init(Mode mode)
 {
-    /* SYSCFG_DL_MCAN0_init() 已由 SYSCFG_DL_init() 调用，
-       这里设置回环模式和全局滤波器 */
-
-    /* 配置全局滤波器：不匹配的帧也进 FIFO0 */
+    /* 全局滤波器：非匹配帧进 FIFO0 */
     DL_MCAN_ConfigParams cfg;
-    cfg.monEnable        = 0;
-    cfg.asmEnable        = 0;
-    cfg.tsSelect         = 0;   /* 不用时间戳 */
-    cfg.tsPrescalar      = 0;
-    cfg.timeoutSelect    = 0;   /* 不用超时 */
-    cfg.timeoutPreload   = 0;
-    cfg.timeoutCntEnable = 0;
-    cfg.filterConfig.rrfe = 0;  /* 不拒绝远程帧 */
-    cfg.filterConfig.rrfs = 0;
-    cfg.filterConfig.anfe = 0;  /* 不匹配扩展帧 → FIFO0 */
-    cfg.filterConfig.anfs = 0;  /* 不匹配标准帧 → FIFO0 */
+    memset(&cfg, 0, sizeof(cfg));
+    cfg.filterConfig.anfs = 0;
+    cfg.filterConfig.anfe = 0;
     DL_MCAN_config(MCAN0_INST, &cfg);
 
-    s_loopback = (mode == CAN_MODE_LOOPBACK);
-    CAN_SetLoopback(s_loopback);
+    rxHead_ = 0;
+    rxTail_ = 0;
+    rxCnt_  = 0;
+
+    setLoopback(mode == LOOPBACK);
 }
 
-bool CAN_Send(uint32_t id, const uint8_t *data, uint8_t len)
+bool BspCan::send(uint32_t id, const uint8_t *data, uint8_t len)
 {
-    /* 检查 TX Buffer 0 是否忙 (TXBRP bit0) */
-    if (DL_MCAN_getTxBufReqPend(MCAN0_INST) & 0x01)
-        return false;   /* 忙，不阻塞，上层决定重试或丢弃 */
+    if (DL_MCAN_getTxBufReqPend(MCAN0_INST) & 0x01U)
+        return false;
 
-    DL_MCAN_TxBufElement txElem;
-    memset(&txElem, 0, sizeof(txElem));
+    DL_MCAN_TxBufElement tx;
+    memset(&tx, 0, sizeof(tx));
+    tx.id  = (id & 0x7FFU) << 18U;
+    tx.dlc = (len > 8) ? 8 : (uint8_t)len;
+    if (len > 0 && data) memcpy(tx.data, data, tx.dlc);
 
-    /* TI MCAN: 标准 ID 在 Word0 bits[28:18] */
-    txElem.id  = (id & 0x7FF) << 18;
-    txElem.xtd = 0;
-    txElem.rtr = 0;
-    txElem.fdf = 0;
-    txElem.efc = 0;
-    txElem.dlc = (len > 8) ? 8 : len;
-    if (len > 0 && data) memcpy(txElem.data, data, txElem.dlc);
-
-    DL_MCAN_writeMsgRam(MCAN0_INST, DL_MCAN_MEM_TYPE_BUF, 0, &txElem);
-    DL_MCAN_TXBufAddReq(MCAN0_INST, 0);
+    DL_MCAN_writeMsgRam(MCAN0_INST, DL_MCAN_MEM_TYPE_BUF, 0U, &tx);
+    DL_MCAN_TXBufAddReq(MCAN0_INST, 0U);
     return true;
 }
 
-void CAN_RecvPoll(void)
+void BspCan::recvPoll()
 {
     DL_MCAN_RxFIFOStatus st;
     st.num = DL_MCAN_RX_FIFO_NUM_0;
@@ -108,36 +76,38 @@ void CAN_RecvPoll(void)
 
     while (st.fillLvl > 0)
     {
-        DL_MCAN_RxBufElement rxElem;
+        DL_MCAN_RxBufElement rx;
         DL_MCAN_readMsgRam(MCAN0_INST, DL_MCAN_MEM_TYPE_FIFO, 0,
-                           DL_MCAN_RX_FIFO_NUM_0, &rxElem);
-        DL_MCAN_writeRxFIFOAck(MCAN0_INST, DL_MCAN_RX_FIFO_NUM_0,
-                               st.getIdx);
+                           DL_MCAN_RX_FIFO_NUM_0, &rx);
+        DL_MCAN_writeRxFIFOAck(MCAN0_INST, DL_MCAN_RX_FIFO_NUM_0, st.getIdx);
 
-        uint8_t idx = s_rxBufHead;
-        s_rxBufId[idx]   = (rxElem.id >> 18) & 0x7FF;
-        s_rxBufLen[idx]  = (rxElem.dlc > 8) ? 8 : (uint8_t)rxElem.dlc;
-        memcpy((void *)s_rxBufData[idx], rxElem.data, s_rxBufLen[idx]);
-        s_rxBufHead = (idx + 1) % CAN_RX_BUF_SIZE;
+        if (rxCnt_ >= RX_BUF_SIZE) break;
+        uint8_t idx = rxHead_;
+        rxId_[idx]  = (rx.id >> 18U) & 0x7FFU;
+        rxLen_[idx] = (rx.dlc > 8) ? 8 : (uint8_t)rx.dlc;
+        memcpy((void *)rxData_[idx], rx.data, rxLen_[idx]);
+        rxHead_ = (idx + 1) % RX_BUF_SIZE;
+        rxCnt_++;
 
         st.num = DL_MCAN_RX_FIFO_NUM_0;
         DL_MCAN_getRxFIFOStatus(MCAN0_INST, &st);
     }
 }
 
-bool CAN_RecvRead(uint32_t *id, uint8_t *data, uint8_t *len)
+bool BspCan::recvRead(uint32_t *id, uint8_t *data, uint8_t *len)
 {
-    if (s_rxBufTail == s_rxBufHead) return false;
+    if (rxCnt_ == 0) return false;
 
-    uint8_t idx = s_rxBufTail;
-    *id  = s_rxBufId[idx];
-    *len = s_rxBufLen[idx];
-    memcpy(data, (const void *)s_rxBufData[idx], *len);
-    s_rxBufTail = (idx + 1) % CAN_RX_BUF_SIZE;
+    uint8_t idx = rxTail_;
+    *id  = rxId_[idx];
+    *len = rxLen_[idx];
+    memcpy(data, (const void *)rxData_[idx], *len);
+    rxTail_ = (idx + 1) % RX_BUF_SIZE;
+    rxCnt_--;
     return true;
 }
 
-void CAN_GetStatus(CAN_Status *status)
+void BspCan::getStatus(Status *st)
 {
     DL_MCAN_ErrCntStatus ec;
     DL_MCAN_getErrCounters(MCAN0_INST, &ec);
@@ -145,72 +115,66 @@ void CAN_GetStatus(CAN_Status *status)
     DL_MCAN_ProtocolStatus ps;
     DL_MCAN_getProtocolStatus(MCAN0_INST, &ps);
 
-    status->txErrCnt    = ec.transErrLogCnt;
-    status->rxErrCnt    = ec.recErrCnt;
-    status->activity    = ps.act;
-    status->lastErrCode = ps.lastErrCode;
-    status->busOff      = (ps.busOffStatus != 0);
+    st->txErrCnt    = ec.transErrLogCnt;
+    st->rxErrCnt    = ec.recErrCnt;
+    st->activity    = ps.act;
+    st->lastErrCode = ps.lastErrCode;
+    st->busOff      = (ps.busOffStatus != 0);
 }
 
-void CAN_SetLoopback(bool enable)
+void BspCan::setLoopback(bool enable)
 {
-    can_write_unlock();
-
+    writeUnlock();
     DL_MCAN_lpbkModeEnable(MCAN0_INST, DL_MCAN_LPBK_MODE_INTERNAL, enable);
-
-    s_loopback = enable;
-
-    can_write_lock();
+    loopback_ = enable;
+    writeLock();
 }
 
-/* ===================================================================
- * 中断模式 (RX 由 ISR 驱动)
- * =================================================================== */
-
-void CAN_EnableIrq(void)
+void BspCan::enableIrq()
 {
-    /* 只开 RF0N (FIFO0 新消息) + RF0L (FIFO0 水位) */
     DL_MCAN_enableIntr(MCAN0_INST, DL_MCAN_INTR_MASK_ALL, 0U);
     DL_MCAN_enableIntr(MCAN0_INST,
         DL_MCAN_INTERRUPT_RF0N | DL_MCAN_INTERRUPT_RF0L, 1U);
-
-    /* Line 0 已在 SysConfig 配好 (ILE=1, MSP=1)，这里只清一次 */
     DL_MCAN_clearInterruptStatus(MCAN0_INST, DL_MCAN_MSP_INTERRUPT_LINE0);
     __DSB();
     NVIC_EnableIRQ(MCAN0_INST_INT_IRQN);
 }
 
-void CAN_DisableIrq(void)
+void BspCan::disableIrq()
 {
     NVIC_DisableIRQ(MCAN0_INST_INT_IRQN);
 }
 
-/* ---- ISR: 仿 CAN_RecvPoll，读 FIFO 进环形缓冲 ---- */
-extern "C" void MCAN0_INST_IRQHandler(void)
+/* ================================================================
+ *  ISR: FIFO → 环形缓冲
+ * ================================================================ */
+
+void BspCan::isrHandler()
 {
     uint32_t status = DL_MCAN_getIntrStatus(MCAN0_INST);
     DL_MCAN_clearIntrStatus(MCAN0_INST, status, DL_MCAN_INTR_SRC_MCAN_LINE_0);
 
     if (status & MCAN_IR_RF0N_MASK)
     {
-        /* RF0N 已触发，FIFO 必有数据，直接读 */
         DL_MCAN_RxFIFOStatus st;
         st.num = DL_MCAN_RX_FIFO_NUM_0;
         DL_MCAN_getRxFIFOStatus(MCAN0_INST, &st);
 
         while (st.fillLvl > 0)
         {
-            DL_MCAN_RxBufElement rxElem;
+            DL_MCAN_RxBufElement rx;
             DL_MCAN_readMsgRam(MCAN0_INST, DL_MCAN_MEM_TYPE_FIFO, 0,
-                               DL_MCAN_RX_FIFO_NUM_0, &rxElem);
+                               DL_MCAN_RX_FIFO_NUM_0, &rx);
             DL_MCAN_writeRxFIFOAck(MCAN0_INST, DL_MCAN_RX_FIFO_NUM_0,
                                    st.getIdx);
 
-            uint8_t idx = s_rxBufHead;
-            s_rxBufId[idx]   = (rxElem.id >> 18) & 0x7FF;
-            s_rxBufLen[idx]  = (rxElem.dlc > 8) ? 8 : (uint8_t)rxElem.dlc;
-            memcpy((void *)s_rxBufData[idx], rxElem.data, s_rxBufLen[idx]);
-            s_rxBufHead = (idx + 1) % CAN_RX_BUF_SIZE;
+            if (rxCnt_ >= RX_BUF_SIZE) break;
+            uint8_t idx = rxHead_;
+            rxId_[idx]  = (rx.id >> 18U) & 0x7FFU;
+            rxLen_[idx] = (rx.dlc > 8) ? 8 : (uint8_t)rx.dlc;
+            memcpy((void *)rxData_[idx], rx.data, rxLen_[idx]);
+            rxHead_ = (idx + 1) % RX_BUF_SIZE;
+            rxCnt_++;
 
             st.num = DL_MCAN_RX_FIFO_NUM_0;
             DL_MCAN_getRxFIFOStatus(MCAN0_INST, &st);
